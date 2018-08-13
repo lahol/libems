@@ -25,6 +25,12 @@ EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...)
     return comm;
 }
 
+void ems_communicator_set_callbacks(EMSCommunicator *comm, EMSCommunicatorCallbacks *callbacks)
+{
+    if (comm && callbacks)
+        comm->callbacks = *callbacks;
+}
+
 void ems_communicator_destroy(EMSCommunicator *comm)
 {
     if (comm && comm->destroy)
@@ -40,23 +46,17 @@ int ems_communicator_connect(EMSCommunicator *comm)
     return -1;
 }
 
+int ems_communicator_disconnect(EMSCommunicator *comm)
+{
+    if (comm && comm->disconnect)
+        return comm->disconnect(comm);
+    return -1;
+}
+
 int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg)
 {
-    if (comm && comm->send_message)
-        return comm->send_message(comm, msg);
-    return -1;
-}
-
-int ems_communicator_run(EMSCommunicator *comm)
-{
-    if (comm && comm->run)
-        return comm->run(comm);
-    return -1;
-}
-
-int ems_communicator_stop(EMSCommunicator *comm)
-{
-    if (comm && comm->stop)
-        return comm->stop(comm);
+    if (comm && comm->send_message) {
+        return comm->send_message(comm);
+    }
     return -1;
 }

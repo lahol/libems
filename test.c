@@ -29,13 +29,18 @@ int main(int argc, char **argv)
 
     EMSCommunicator *comm = ems_communicator_create(EMS_COMM_TYPE_UNIX,
                                                     "socket", "/tmp/test-ems-sock",
+                                                    "role", role,
                                                     NULL, NULL);
     ems_peer_add_communicator(peer, comm);
+    ems_peer_connect(peer);
 
     if (peer->role == EMS_PEER_ROLE_MASTER)
-        fprintf(stderr, "I am the master.\n");
+        fprintf(stderr, "I am the master. (%d)\n", getpid());
     else
-        fprintf(stderr, "I am a slave.\n");
+        fprintf(stderr, "I am a slave. (%d)\n", getpid());
+
+    /* We have no work yet. So just sleep to get the connection working. */
+    sleep(5);
 
     ems_peer_destroy(peer);
 

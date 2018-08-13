@@ -28,10 +28,15 @@ struct _EMSPeer {
     PeerSendMessage send_message;
     PeerShutdown shutdown;
     PeerDestroy destroy;
+
+    uint32_t max_slave_id;
 };
 
 EMSPeer *ems_peer_create(EMSPeerRole role);
 void ems_peer_destroy(EMSPeer *peer);
+
+void ems_peer_connect(EMSPeer *peer);
+void ems_peer_disconnect(EMSPeer *peer);
 
 void ems_peer_send_message(EMSPeer *peer, EMSMessage *msg);
 void ems_peer_shutdown(EMSPeer *peer);

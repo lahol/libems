@@ -34,6 +34,22 @@ void ems_peer_destroy(EMSPeer *peer)
     ems_free(peer);
 }
 
+void ems_peer_connect(EMSPeer *peer)
+{
+    EMSList *tmp;
+    for (tmp = peer->communicators; tmp; tmp = tmp->next) {
+        ems_communicator_connect((EMSCommunicator *)tmp->data);
+    }
+}
+
+void ems_peer_disconnect(EMSPeer *peer)
+{
+    EMSList *tmp;
+    for (tmp = peer->communicators; tmp; tmp = tmp->next) {
+        ems_communicator_disconnect((EMSCommunicator *)tmp->data);
+    }
+}
+
 void ems_peer_send_message(EMSPeer *peer, EMSMessage *msg)
 {
     if (peer && peer->send_message)
@@ -46,10 +62,22 @@ void ems_peer_shutdown(EMSPeer *peer)
         peer->shutdown(peer);
 }
 
+uint32_t ems_peer_query_slave_id(EMSCommunicator *comm, EMSPeer *peer)
+{
+    /* FIXME: lock/unlock, may be called by different threads for multiple communicators */
+    return ++peer->max_slave_id;
+}
+
 void ems_peer_add_communicator(EMSPeer *peer, EMSCommunicator *comm)
 {
     if (!peer || !comm)
         return;
 
+    EMSCommunicatorCallbacks callbacks = {
+        .query_slave_id = (EMSCommunicatorQuerySlaveId)ems_peer_query_slave_id,
+        .user_data = peer
+    };
+
+    ems_communicator_set_callbacks(comm, &callbacks);
     peer->communicators = ems_list_prepend(peer->communicators, comm);
 }
