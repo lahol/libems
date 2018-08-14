@@ -21,6 +21,30 @@ void test_register_messages(void)
     ems_message_register_type(EMS_TEST_MESSAGE_QUIT, &cls);
 }
 
+#include <pthread.h>
+#include <signal.h>
+
+EMSPeerRole role = EMS_PEER_ROLE_MASTER;
+
+static void *signal_thread(void *arg)
+{
+    sigset_t *set = arg;
+    int s, sig;
+
+    while (1) {
+        s = sigwait(set, &sig);
+        if (s != 0) {
+            fprintf(stderr, "Error in sigwait\n");
+        }
+/*        fprintf(stderr, "Signal handling thread got signal %d\n", sig);*/
+
+        if (role == EMS_PEER_ROLE_MASTER && sig == SIGINT) {
+            fprintf(stderr, "Master got SIGINT\n");
+        }
+    }
+
+    return NULL;
+}
 
 int main(int argc, char **argv)
 {
@@ -32,7 +56,6 @@ int main(int argc, char **argv)
 
     EMSPeer *peer = NULL;
 
-    EMSPeerRole role = EMS_PEER_ROLE_MASTER;
     EMSMessage *msg;
 
     test_register_messages();
@@ -48,6 +71,18 @@ int main(int argc, char **argv)
         }
     }
 
+    /* signal handling */
+    pthread_t sig_thread;
+    sigset_t set;
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGINT);
+    sigaddset(&set, SIGUSR1);
+
+    pthread_sigmask(SIG_BLOCK, &set, NULL);
+    pthread_create(&sig_thread, NULL, &signal_thread, (void *)&set);
+
+
     peer = ems_peer_create(role);
 
     EMSCommunicator *comm = ems_communicator_create(EMS_COMM_TYPE_UNIX,
@@ -60,7 +95,7 @@ int main(int argc, char **argv)
     if (peer->role == EMS_PEER_ROLE_MASTER) {
         fprintf(stderr, "I am the master. (%d)\n", getpid());
         /* We have no work yet. So just sleep to get the connection working. */
-        sleep(3);
+        sleep(8);
 
         msg = ems_message_new(EMS_TEST_MESSAGE_QUIT,
                               EMS_MESSAGE_RECIPIENT_ALL,
