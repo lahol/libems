@@ -27,7 +27,7 @@ typedef void (*EMSCommunicatorHandleInternalMessage)(EMSCommunicator *, EMSMessa
 
 struct _EMSCommunicator {
     EMSCommunicatorType type;
-    int role;
+    EMSPeerRole role;
 
     EMSPeer *peer;
 
@@ -44,6 +44,10 @@ struct _EMSCommunicator {
 };
 
 EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...);
+EMSCommunicator *ems_communicator_create_from_string(const char *desc);
+
+void ems_communicator_set_role(EMSCommunicator *comm, EMSPeerRole role);
+
 void ems_communicator_destroy(EMSCommunicator *comm);
 
 int ems_communicator_connect(EMSCommunicator *comm);

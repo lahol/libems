@@ -342,6 +342,7 @@ void *ems_communicator_unix_comm_thread(EMSCommunicatorUnix *comm)
             if ((sock_info = _ems_communictator_unix_try_connect(comm)) != NULL) {
                 comm->status_flags &= ~EMS_COMM_UNIX_STATUS_CONNECTING;
                 comm->status_flags |= EMS_COMM_UNIX_STATUS_CONNECTED;
+                ((EMSCommunicator *)comm)->status = EMS_COMM_STATUS_CONNECTED;
                 epoll_timeout = -1;
             }
             else
@@ -350,6 +351,7 @@ void *ems_communicator_unix_comm_thread(EMSCommunicatorUnix *comm)
         else if (comm->status_flags & EMS_COMM_UNIX_STATUS_DISCONNECT) {
             _ems_communicator_unix_disconnect_peers(comm);
             comm->status_flags &= ~EMS_COMM_UNIX_STATUS_DISCONNECT;
+            ((EMSCommunicator *)comm)->status = EMS_COMM_STATUS_INITIALIZED;
         }
 
         if (comm->status_flags & EMS_COMM_UNIX_STATUS_QUIT) {
