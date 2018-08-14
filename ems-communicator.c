@@ -27,12 +27,6 @@ EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...)
     return comm;
 }
 
-void ems_communicator_set_callbacks(EMSCommunicator *comm, EMSCommunicatorCallbacks *callbacks)
-{
-    if (comm && callbacks)
-        comm->callbacks = *callbacks;
-}
-
 void ems_communicator_destroy(EMSCommunicator *comm)
 {
     if (comm && comm->destroy)
@@ -67,10 +61,8 @@ void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage 
 {
     switch (msg->type) {
         case __EMS_MESSAGE_TYPE_SET_ID:
-            if (comm && comm->callbacks.set_own_id)
-                comm->callbacks.set_own_id(comm,
-                                           ((EMSMessageIntSetId *)msg)->peer_id,
-                                           comm->callbacks.user_data);
+            if (comm && comm->peer)
+                ems_peer_set_id(comm->peer, ((EMSMessageIntSetId *)msg)->peer_id);
             break;
         default:
             if (comm && comm->handle_int_message)

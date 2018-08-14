@@ -127,9 +127,8 @@ int _ems_communicator_unix_master_accept_slave(EMSCommunicatorUnix *comm, int fd
 
     /* query new slave id and send to new slave */
     uint32_t new_id = 0;
-    if (((EMSCommunicator *)comm)->callbacks.query_slave_id)
-        new_id = ((EMSCommunicator *)comm)->callbacks.query_slave_id((EMSCommunicator *)comm,
-                ((EMSCommunicator *)comm)->callbacks.user_data);
+    if (((EMSCommunicator *)comm)->peer)
+        new_id = ems_peer_generate_new_slave_id(((EMSCommunicator *)comm)->peer);
 
     EMSSocketInfo *sock_info = _ems_communicator_unix_add_socket(comm, newfd, EMS_SOCKET_TYPE_DATA);
     sock_info->id = new_id;
@@ -216,8 +215,9 @@ void _ems_communicator_unix_check_outgoing_messages(EMSCommunicatorUnix *comm)
             /* send to all */
             for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
                 peer = (EMSSocketInfo *)tmp->data;
-                if (peer->type == EMS_SOCKET_TYPE_DATA)
+                if (peer->type == EMS_SOCKET_TYPE_DATA) {
                     ems_util_write_full(peer->fd, buffer, buflen);
+                }
             }
         }
         else {
@@ -264,8 +264,7 @@ void _ems_communicator_unix_read_incoming_message(EMSCommunicatorUnix *comm, EMS
         ems_message_free(msg);
     }
     else {
-        ems_message_queue_push_tail(&((EMSCommunicator *)comm)->msg_queue_incoming, msg);
-        /* TODO: signal that new message arrived. */
+        ems_peer_push_message(((EMSCommunicator *)comm)->peer, msg);
     }
 }
 
