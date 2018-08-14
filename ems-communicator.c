@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "ems-memory.h"
+#include "ems-message.h"
+#include "ems-messages-internal.h"
 #include "ems-communicator-unix.h"
 /*#include "ems-communicator-tcp.h"*/
 
@@ -59,4 +61,19 @@ int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg)
         return comm->send_message(comm);
     }
     return -1;
+}
+
+void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg)
+{
+    switch (msg->type) {
+        case __EMS_MESSAGE_TYPE_SET_ID:
+            if (comm && comm->callbacks.set_own_id)
+                comm->callbacks.set_own_id(comm,
+                                           ((EMSMessageIntSetId *)msg)->peer_id,
+                                           comm->callbacks.user_data);
+            break;
+        default:
+            if (comm && comm->handle_int_message)
+                comm->handle_int_message(comm, msg);
+    }
 }

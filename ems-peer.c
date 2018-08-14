@@ -1,6 +1,7 @@
 #include "ems-peer.h"
 #include "ems-memory.h"
 #include <memory.h>
+#include <stdio.h>
 
 EMSPeer *ems_peer_create(EMSPeerRole role)
 {
@@ -68,6 +69,12 @@ uint32_t ems_peer_query_slave_id(EMSCommunicator *comm, EMSPeer *peer)
     return ++peer->max_slave_id;
 }
 
+void ems_peer_set_own_id(EMSCommunicator *comm, uint32_t id, EMSPeer *peer)
+{
+    fprintf(stderr, "got own id %d (%d)\n", id, getpid());
+    peer->id = id;
+}
+
 void ems_peer_add_communicator(EMSPeer *peer, EMSCommunicator *comm)
 {
     if (!peer || !comm)
@@ -75,6 +82,7 @@ void ems_peer_add_communicator(EMSPeer *peer, EMSCommunicator *comm)
 
     EMSCommunicatorCallbacks callbacks = {
         .query_slave_id = (EMSCommunicatorQuerySlaveId)ems_peer_query_slave_id,
+        .set_own_id = (EMSCommunicatorSetOwnId)ems_peer_set_own_id,
         .user_data = peer
     };
 

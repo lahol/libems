@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include "ems-messages-internal.h"
 
 EMSSocketInfo *_ems_communicator_unix_add_socket(EMSCommunicatorUnix *comm, int fd, EMSSocketType type)
 {
@@ -38,7 +39,9 @@ int ems_communicator_unix_disconnect(EMSCommunicatorUnix *comm)
 int ems_communicator_unix_send_message(EMSCommunicatorUnix *comm, EMSMessage *msg)
 {
     /* signal incoming message to comm thread */
-    ems_message_queue_push_tail(&((EMSCommunicator *)comm)->msg_queue, ems_message_dup(msg));
+    if (ems_unlikely(!msg))
+        return -1;
+    ems_message_queue_push_tail(&((EMSCommunicator *)comm)->msg_queue_outgoing, ems_message_dup(msg));
     write(comm->control_pipe[1], "M", 1);
     return 0;
 }
@@ -52,7 +55,8 @@ int ems_communicator_unix_destroy(EMSCommunicatorUnix *comm)
     close(comm->control_pipe[0]);
 
     ems_list_free_full(comm->socket_list, (EMSDestroyNotifyFunc)ems_free);
-    ems_message_queue_clear(&((EMSCommunicator *)comm)->msg_queue);
+    ems_message_queue_clear(&((EMSCommunicator *)comm)->msg_queue_outgoing);
+    ems_message_queue_clear(&((EMSCommunicator *)comm)->msg_queue_incoming);
 
     return 0;
 }
@@ -138,24 +142,21 @@ int _ems_communicator_unix_master_accept_slave(EMSCommunicatorUnix *comm, int fd
     ev.data.ptr = sock_info;
     epoll_ctl(comm->epoll_fd, EPOLL_CTL_ADD, sock_info->fd, &ev);
 
-    uint8_t pl[4];
-    ems_message_write_u32(pl, 0, new_id);
-    EMSMessage *msg = ems_message_create(EMS_MESSAGE_TYPE_SET_ID,
-                                         0,
-                                         0,
-                                         EMS_MESSAGE_RECIPIENT_MASTER,
-                                         new_id,
-                                         4,
-                                         pl);
+    EMSMessage *msg = ems_message_new(__EMS_MESSAGE_TYPE_SET_ID,
+                                      new_id,
+                                      EMS_MESSAGE_RECIPIENT_MASTER,
+                                      "peer-id", new_id,
+                                      NULL, NULL);
 
     ems_communicator_unix_send_message(comm, msg);
+
+    ems_message_free(msg);
 
     return 0;
 }
 
 void _ems_communicator_unix_disconnect_peers(EMSCommunicatorUnix *comm)
 {
-    fprintf(stderr, "disconnecting peers\n");
     /* remove everything not the control socket. */
 
     EMSList *tmp;
@@ -206,27 +207,65 @@ void _ems_communicator_unix_check_outgoing_messages(EMSCommunicatorUnix *comm)
     EMSMessage *msg;
     EMSSocketInfo *peer;
     uint8_t *buffer = NULL;
+    size_t buflen;
     EMSList *tmp;
 
-    while ((msg = ems_message_queue_pop_filtered(&((EMSCommunicator *)comm)->msg_queue)) != NULL) {
-        buffer = ems_alloc(EMS_MESSAGE_HEADER_SIZE + msg->payload_size);
-        ems_message_to_net(buffer, msg);
+    while ((msg = ems_message_queue_pop_filtered(&((EMSCommunicator *)comm)->msg_queue_outgoing)) != NULL) {
+        buflen = ems_message_encode(msg, &buffer);
         if (msg->recipient_id == EMS_MESSAGE_RECIPIENT_ALL) {
             /* send to all */
             for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
                 peer = (EMSSocketInfo *)tmp->data;
                 if (peer->type == EMS_SOCKET_TYPE_DATA)
-                    ems_util_write_full(peer->fd, buffer, EMS_MESSAGE_HEADER_SIZE + msg->payload_size);
+                    ems_util_write_full(peer->fd, buffer, buflen);
             }
         }
         else {
             /* find slave */
             peer = _ems_communicator_unix_get_peer(comm, msg->recipient_id);
-            fprintf(stderr, "peer: %p, fd: %d\n", peer, peer->fd);
-            ems_util_write_full(peer->fd, buffer, EMS_MESSAGE_HEADER_SIZE + msg->payload_size);
+            ems_util_write_full(peer->fd, buffer, buflen);
         }
         ems_free(buffer);
         ems_message_free(msg);
+    }
+}
+
+void _ems_communicator_unix_read_incoming_message(EMSCommunicatorUnix *comm, EMSSocketInfo *sock_info)
+{
+    uint8_t *buffer = ems_alloc(EMS_MESSAGE_HEADER_SIZE);
+
+    ssize_t rc;
+    if ((rc = ems_util_read_full(sock_info->fd, buffer, EMS_MESSAGE_HEADER_SIZE)) < 0) {
+        ems_free(buffer);
+        return;
+    }
+
+
+    size_t payload_size = 0;
+    EMSMessage *msg = ems_message_decode_header(buffer, rc, &payload_size);
+    if (!msg)
+        return;
+
+    ems_free(buffer);
+    if (payload_size) {
+        buffer = ems_alloc(payload_size);
+
+        if ((rc = ems_util_read_full(sock_info->fd, buffer, payload_size)) < 0) {
+            ems_message_free(msg);
+            ems_free(buffer);
+            return;
+        }
+
+        ems_message_decode_payload(msg, buffer, payload_size);
+    }
+
+    if (EMS_MESSAGE_IS_INTERNAL(msg)) {
+        ems_communicator_handle_internal_message((EMSCommunicator *)comm, msg);
+        ems_message_free(msg);
+    }
+    else {
+        ems_message_queue_push_tail(&((EMSCommunicator *)comm)->msg_queue_incoming, msg);
+        /* TODO: signal that new message arrived. */
     }
 }
 
@@ -260,9 +299,7 @@ void *ems_communicator_unix_comm_thread(EMSCommunicatorUnix *comm)
                         if ((rc = read(sock_info->fd, &ctl, 1)) <= 0)
                             break;
                         if (ctl == 'M') {
-                            /* send messages from queue */
-/*                            comm->status_flags |= EMS_COMM_UNIX_STATUS_DATA;*/
-                            fprintf(stderr, "outgoing messages in queue\n");
+                            /* New message arrived. Nothing to do here. This is just a wakeup call. */
                         }
                         else if (ctl == 'C') {
                             /* try to connect, if this fails, set timeout to 100ms, to retry */
@@ -284,10 +321,13 @@ void *ems_communicator_unix_comm_thread(EMSCommunicatorUnix *comm)
                     break;
                 case EMS_SOCKET_TYPE_DATA:
                     /* read messages */
-                    if (incoming[j].events & EPOLLERR) {
-                        fprintf(stderr, "Error in connection, removing\n");
+                    if (incoming[j].events & (EPOLLERR | EPOLLHUP)) {
+/*                        fprintf(stderr, "Error in connection, removing\n");*/
                         _ems_communicator_unix_disconnect_peer(comm, sock_info);
                         /* FIXME: if we got no bye message and we are a slave, try to reconnect */
+                    }
+                    else if (incoming[j].events & EPOLLIN) {
+                        _ems_communicator_unix_read_incoming_message(comm, sock_info);
                     }
                     break;
                 case EMS_SOCKET_TYPE_MASTER:
@@ -312,10 +352,6 @@ void *ems_communicator_unix_comm_thread(EMSCommunicatorUnix *comm)
             _ems_communicator_unix_disconnect_peers(comm);
             comm->status_flags &= ~EMS_COMM_UNIX_STATUS_DISCONNECT;
         }
-/*        else if (comm->status_flags & EMS_COMM_UNIX_STATUS_DATA) {
-            fprintf(stderr, "got outgoing messages %d\n", getpid());
-            comm->status_flags &= ~EMS_COMM_UNIX_STATUS_DATA;
-        }*/
 
         if (comm->status_flags & EMS_COMM_UNIX_STATUS_QUIT) {
             /* we disconnected earlier */
@@ -375,7 +411,8 @@ EMSCommunicator *ems_communicator_unix_create(va_list args)
         return NULL;
     }
 
-    ems_message_queue_init(&comm->msg_queue);
+    ems_message_queue_init(&comm->msg_queue_outgoing);
+    ems_message_queue_init(&comm->msg_queue_incoming);
 
     rc = pthread_create(&uc->comm_thread, NULL, (PThreadCallback)ems_communicator_unix_comm_thread, (void *)comm);
     if (rc) {

@@ -21,11 +21,14 @@ typedef int (*EMSCommunicatorConnect)(EMSCommunicator *);
 typedef int (*EMSCommunicatorDisconnect)(EMSCommunicator *);
 typedef int (*EMSCommunicatorSendMessage)(EMSCommunicator *);
 typedef void (*EMSCommunicatorDestroy)(EMSCommunicator *);
+typedef void (*EMSCommunicatorHandleInternalMessage)(EMSCommunicator *, EMSMessage *);
 
 typedef uint32_t (*EMSCommunicatorQuerySlaveId)(EMSCommunicator *, void *);
+typedef void (*EMSCommunicatorSetOwnId)(EMSCommunicator *, uint32_t, void *);
 
 typedef struct {
     EMSCommunicatorQuerySlaveId query_slave_id;
+    EMSCommunicatorSetOwnId set_own_id;
     /* handle message */
     void *user_data;
 } EMSCommunicatorCallbacks;
@@ -38,12 +41,14 @@ struct _EMSCommunicator {
     EMSCommunicatorConnect connect;
     EMSCommunicatorDisconnect disconnect;
     EMSCommunicatorSendMessage send_message;
+    EMSCommunicatorHandleInternalMessage handle_int_message;
 
     EMSCommunicatorCallbacks callbacks;
 
     EMSCommunicatorStatus status;
 
-    EMSMessageQueue msg_queue;
+    EMSMessageQueue msg_queue_outgoing;
+    EMSMessageQueue msg_queue_incoming;
 };
 
 EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...);
@@ -52,5 +57,6 @@ void ems_communicator_destroy(EMSCommunicator *comm);
 int ems_communicator_connect(EMSCommunicator *comm);
 int ems_communicator_disconnect(EMSCommunicator *comm);
 int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg);
+void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg);
 
 void ems_communicator_set_callbacks(EMSCommunicator *comm, EMSCommunicatorCallbacks *callbacks);

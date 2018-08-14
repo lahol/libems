@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "ems-peer.h"
+#include "ems.h"
 
 
 int main(int argc, char **argv)
@@ -9,6 +10,8 @@ int main(int argc, char **argv)
     int j;
 
     pid_t pid;
+
+    ems_init("EMSG");
 
     EMSPeer *peer = NULL;
 
@@ -40,9 +43,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "I am a slave. (%d)\n", getpid());
 
     /* We have no work yet. So just sleep to get the connection working. */
-    sleep(5);
+    sleep(3);
 
     ems_peer_destroy(peer);
+
+    ems_cleanup();
 
     return 0;
 }
