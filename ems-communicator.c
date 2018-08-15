@@ -7,7 +7,7 @@
 #include "ems-message.h"
 #include "ems-messages-internal.h"
 #include "ems-communicator-unix.h"
-/*#include "ems-communicator-inet.h"*/
+#include "ems-communicator-inet.h"
 #include <string.h>
 
 EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...)
@@ -20,6 +20,8 @@ EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...)
             comm = ems_communicator_unix_create(args);
             break;
         case EMS_COMM_TYPE_INET:
+            comm = ems_communicator_inet_create(args);
+            break;
         default:
             fprintf(stderr, "Unsupported communicator type: %d\n", type);
     }
@@ -60,7 +62,7 @@ EMSCommunicator *ems_communicator_create_from_string(const char *desc)
         if (parts < 3)
             goto done;
         comm = ems_communicator_create(EMS_COMM_TYPE_INET,
-                                       "host", offsets[1],
+                                       "hostname", offsets[1],
                                        "port", offsets[2],
                                        NULL, NULL);
     }

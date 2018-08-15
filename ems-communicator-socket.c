@@ -197,7 +197,7 @@ void _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm,
     uint8_t *buffer = ems_alloc(EMS_MESSAGE_HEADER_SIZE);
 
     ssize_t rc;
-    if ((rc = ems_util_read_full(sock_info->fd, buffer, EMS_MESSAGE_HEADER_SIZE)) < 0) {
+    if ((rc = ems_util_read_full(sock_info->fd, buffer, EMS_MESSAGE_HEADER_SIZE)) <= 0) {
         ems_free(buffer);
         return;
     }
@@ -211,7 +211,7 @@ void _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm,
     if (payload_size) {
         buffer = ems_alloc(payload_size);
 
-        if ((rc = ems_util_read_full(sock_info->fd, buffer, payload_size)) < 0) {
+        if ((rc = ems_util_read_full(sock_info->fd, buffer, payload_size)) <= 0) {
             ems_message_free(msg);
             ems_free(buffer);
             return;
@@ -255,14 +255,14 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
                 case EMS_SOCKET_TYPE_CONTROL:
                     {
                         /* handle control stuff */
-                        if ((rc = read(sock_info->fd, &ctl, 1)) <= 0)
+                        if ((rc = read(sock_info->fd, &ctl, 1)) <= 0) {
                             break;
+                        }
                         if (ctl == 'M') {
                             /* New message arrived. Nothing to do here. This is just a wakeup call. */
                         }
                         else if (ctl == 'C') {
                             /* try to connect, if this fails, set timeout to 100ms, to retry */
-                            fprintf(stderr, "got C from control\n");
                             status_flags |= _EMS_COMM_SOCKET_ACTION_CONNECTING;
                         }
                         else if (ctl == 'D') {
@@ -326,6 +326,7 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
     }
 
     close(comm->epoll_fd);
+
     return NULL;
 }
 

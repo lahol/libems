@@ -4,3 +4,5 @@
  * More documentation
  * A simpler way to create peers, possibly by just specifying a configuration string.
  * Better error handling and error recovery.
+ * Resolve hostname in EMSCommunicatorInet.
+ * Slaves should only have one communicator, the one to the master.

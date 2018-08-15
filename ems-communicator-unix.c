@@ -4,24 +4,24 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/epoll.h>
+/*#include <sys/epoll.h>*/
 #include "ems-util.h"
 #include "ems-peer.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include "ems-messages-internal.h"
 #include "ems-error.h"
 
 int ems_communicator_unix_destroy(EMSCommunicatorUnix *comm)
 {
     fprintf(stderr, "unix destroy %d\n", getpid());
     ems_communicator_socket_clear((EMSCommunicatorSocket *)comm);
+    ems_free(comm);
     return 0;
 }
 
 
-int _ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
+int ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
 {
     /* Depending on role, bind socket or connect */
     fprintf(stderr, "try connect %d\n", getpid());
@@ -41,7 +41,7 @@ int _ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
         unlink(comm->socket_name);
 
         if (bind(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) < 0) {
-            fprintf(stderr, "error binding socket\n");
+            fprintf(stderr, "EMSCommunicatorUnix: Error binding socket.\n");
             close(sockfd);
             return -1;
         }
@@ -53,7 +53,7 @@ int _ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
     else {
         /* try to connect to socket */
         if (connect(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) < 0) {
-            fprintf(stderr, "error connecting socket\n");
+            fprintf(stderr, "EMSCommunicatorUnix: Error connecting socket.\n");
             close(sockfd);
             return -1;
         }
@@ -64,7 +64,7 @@ int _ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
     return sockfd;
 }
 
-int _ems_communicator_unix_accept(EMSCommunicatorUnix *comm, int fd)
+int ems_communicator_unix_accept(EMSCommunicatorUnix *comm, int fd)
 {
     fprintf(stderr, "try accepting slave\n");
     struct sockaddr_un addr;
@@ -84,8 +84,10 @@ EMSCommunicator *ems_communicator_unix_create(va_list args)
     comm->role = EMS_PEER_ROLE_SLAVE; /* default to Slave if not specified otherwise */
     comm->destroy = (EMSCommunicatorDestroy)ems_communicator_unix_destroy;
     
-    ((EMSCommunicatorSocket *)comm)->try_connect = (EMSCommunicatorSocketTryConnect)_ems_communictator_unix_try_connect;
-    ((EMSCommunicatorSocket *)comm)->accept      = (EMSCommunicatorSocketAccept)_ems_communicator_unix_accept;
+    ((EMSCommunicatorSocket *)comm)->try_connect =
+        (EMSCommunicatorSocketTryConnect)ems_communictator_unix_try_connect;
+    ((EMSCommunicatorSocket *)comm)->accept      =
+        (EMSCommunicatorSocketAccept)ems_communicator_unix_accept;
 
     if (ems_communicator_socket_init((EMSCommunicatorSocket *)comm) != EMS_OK) {
         ems_free(comm);
@@ -94,18 +96,15 @@ EMSCommunicator *ems_communicator_unix_create(va_list args)
 
     EMSCommunicatorUnix *uc = (EMSCommunicatorUnix *)comm;
 
-    do {
-        key = va_arg(args, char *);
+    while ((key = va_arg(args, char *)) != NULL) {
         val = va_arg(args, void *);
-        if (key) {
-            if (!strcmp(key, "socket")) {
-                strncpy(uc->socket_name, (char *)val, 108);
-            }
-            else {
-                ems_communicator_socket_set_value((EMSCommunicatorSocket *)comm, key, val);
-            }
+        if (!strcmp(key, "socket")) {
+            strncpy(uc->socket_name, (char *)val, 108);
         }
-    } while (key);
+        else {
+            ems_communicator_socket_set_value((EMSCommunicatorSocket *)comm, key, val);
+        }
+    }
 
     if (ems_communicator_socket_run_thread((EMSCommunicatorSocket *)comm) != EMS_OK) {
         ems_communicator_socket_clear((EMSCommunicatorSocket *)comm);

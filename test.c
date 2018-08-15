@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include "ems-peer.h"
 #include "ems.h"
+#include <getopt.h>
+#include <string.h>
 
 #define EMS_TEST_MESSAGE_QUIT      1
 
@@ -21,12 +23,12 @@ void test_register_messages(void)
     ems_message_register_type(EMS_TEST_MESSAGE_QUIT, &cls);
 }
 
-#include <pthread.h>
-#include <signal.h>
-
 EMSPeerRole role = EMS_PEER_ROLE_MASTER;
 
 #if 0
+#include <pthread.h>
+#include <signal.h>
+
 static void *signal_thread(void *arg)
 {
     sigset_t *set = arg;
@@ -48,11 +50,72 @@ static void *signal_thread(void *arg)
 }
 #endif
 
+char *cfg_hostname = NULL;
+uint16_t cfg_port = 0;
+char *cfg_unix_socket = NULL;
+int cfg_slave_only = 0;
+int cfg_slave_count = 1;
+
+int parse_options(int argc, char **argv)
+{
+    static struct option long_options[] = {
+        { "hostname", required_argument, 0, 'h' },
+        { "port", required_argument, 0, 'p' },
+        { "fifo", required_argument, 0, 'u' },
+        { "slave", no_argument, &cfg_slave_only, 1 },
+        { "count", required_argument, 0, 'c' },
+        { 0, 0, 0, 0 },
+    };
+
+    int c;
+    int option_index = 0;
+
+    /* This is just to give an idea how to use the library. No correct error checking,
+     * multiple connections, or something like this is done. */
+    while (1) {
+        c = getopt_long(argc, argv, "h:p:u:c:", long_options, &option_index);
+
+        if (c == -1)
+            break;
+        switch (c) {
+            case 0:
+/*                if (long_options[option_index].flag != 0)
+                    break;*/
+                break;
+            case 'h':
+                cfg_hostname = strdup(optarg);
+                break;
+            case 'p':
+                cfg_port = (uint16_t)strtoul(optarg, NULL, 10);
+                break;
+            case 'u':
+                cfg_unix_socket = strdup(optarg);
+                break;
+            case 'c':
+                cfg_slave_count = strtoul(optarg, NULL, 10);
+                break;
+            case '?':
+                break;
+            default:
+                return 1;
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     int j;
 
     pid_t pid;
+
+    if (parse_options(argc, argv) != 0) {
+        fprintf(stderr, "Error parsing options.\n");
+        return 1;
+    }
+
+    fprintf(stderr, "host: %s:%u\nsocket: %s\ncount: %d\nslave-only: %d\n",
+            cfg_hostname, cfg_port, cfg_unix_socket, cfg_slave_count, cfg_slave_only);
 
     ems_init("EMSG");
 
@@ -62,15 +125,21 @@ int main(int argc, char **argv)
 
     test_register_messages();
 
-    for (j = 0; j < 5; ++j) {
-        pid = fork();
-        if (pid != 0) {
-            fprintf(stderr, "forked: %d\n", pid);
+    if (!cfg_slave_only) {
+        role = EMS_PEER_ROLE_MASTER;
+        for (j = 0; j < cfg_slave_count; ++j) {
+            pid = fork();
+            if (pid != 0) {
+                fprintf(stderr, "forked: %d\n", pid);
+            }
+            else {
+                role = EMS_PEER_ROLE_SLAVE;
+                break;
+            }
         }
-        else {
-            role = EMS_PEER_ROLE_SLAVE;
-            break;
-        }
+    }
+    else {
+        role = EMS_PEER_ROLE_SLAVE;
     }
 
 #if 0
@@ -88,17 +157,35 @@ int main(int argc, char **argv)
 
     peer = ems_peer_create(role);
 
-    EMSCommunicator *comm = ems_communicator_create(EMS_COMM_TYPE_UNIX,
-                                                    "socket", "/tmp/test-ems-sock",
-                                                    "role", role,
-                                                    NULL, NULL);
-    ems_peer_add_communicator(peer, comm);
+    EMSCommunicator *comm = NULL;
+
+
+    if (cfg_unix_socket) {
+        comm = ems_communicator_create(EMS_COMM_TYPE_UNIX,
+                                       "socket", cfg_unix_socket,
+                                       "role", role,
+                                       NULL, NULL);
+        ems_peer_add_communicator(peer, comm);
+    }
+                                                    
+    if (cfg_hostname || cfg_port) {
+        /* only if no unix_socket || role master otherwise the slaves connect twice */
+        if (!cfg_unix_socket || role == EMS_PEER_ROLE_MASTER) {
+            comm = ems_communicator_create(EMS_COMM_TYPE_INET,
+                                           "hostname", cfg_hostname,
+                                           "port", cfg_port,
+                                           "role", role,
+                                           NULL, NULL);
+            ems_peer_add_communicator(peer, comm);
+        }
+    }
+
     ems_peer_connect(peer);
 
     if (peer->role == EMS_PEER_ROLE_MASTER) {
         fprintf(stderr, "I am the master. (%d)\n", getpid());
         /* We have no work yet. So just sleep to get the connection working. */
-        sleep(3);
+        sleep(20);
 
         msg = ems_message_new(EMS_TEST_MESSAGE_QUIT,
                               EMS_MESSAGE_RECIPIENT_ALL,

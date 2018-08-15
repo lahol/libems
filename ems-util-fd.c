@@ -23,8 +23,9 @@ ssize_t ems_util_read_full(int fd, uint8_t *buffer, size_t length)
 
     while (bytes_read < length) {
         rc = read(fd, &buffer[bytes_read], length - bytes_read);
-        if (rc < 0)
-            return -1;
+        if (rc <= 0) {
+            return rc;
+        }
         bytes_read += rc;
     }
 
