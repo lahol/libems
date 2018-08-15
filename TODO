@@ -1,0 +1,6 @@
+ * Change the role of the peer/the communicators at running time.
+   This requires that running connections are closed and the master socket
+   is created or destroyed
+ * More documentation
+ * A simpler way to create peers, possibly by just specifying a configuration string.
+ * Better error handling and error recovery.

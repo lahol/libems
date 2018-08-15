@@ -7,7 +7,8 @@
 #include "ems-message.h"
 #include "ems-messages-internal.h"
 #include "ems-communicator-unix.h"
-/*#include "ems-communicator-tcp.h"*/
+/*#include "ems-communicator-inet.h"*/
+#include <string.h>
 
 EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...)
 {
@@ -18,7 +19,7 @@ EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...)
         case EMS_COMM_TYPE_UNIX:
             comm = ems_communicator_unix_create(args);
             break;
-        case EMS_COMM_TYPE_TCP:
+        case EMS_COMM_TYPE_INET:
         default:
             fprintf(stderr, "Unsupported communicator type: %d\n", type);
     }
@@ -43,7 +44,7 @@ EMSCommunicator *ems_communicator_create_from_string(const char *desc)
     for (j = 0; splt[j] != '\0'; ++j) {
         if (splt[j] == ':') {
             splt[j] = '\0';
-            offsets[parts++] = j+1;
+            offsets[parts++] = &splt[j+1];
         }
     }
 
@@ -58,7 +59,7 @@ EMSCommunicator *ems_communicator_create_from_string(const char *desc)
     else if (!strncmp(offsets[0], "inet", 4)) {
         if (parts < 3)
             goto done;
-        comm = ems_communicator_create(EMS_COMM_TYPE_TCP,
+        comm = ems_communicator_create(EMS_COMM_TYPE_INET,
                                        "host", offsets[1],
                                        "port", offsets[2],
                                        NULL, NULL);
@@ -118,3 +119,15 @@ void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage 
                 comm->handle_int_message(comm, msg);
     }
 }
+
+void ems_communicator_set_status(EMSCommunicator *comm, EMSCommunicatorStatus status)
+{
+    if (ems_unlikely(!comm))
+        return;
+
+    if (comm->status != status) {
+        comm->status = status;
+        /* signal status change */
+    }
+}
+

@@ -5,7 +5,7 @@
 
 typedef enum {
     EMS_COMM_TYPE_UNIX = 1,
-    EMS_COMM_TYPE_TCP,
+    EMS_COMM_TYPE_INET,
 } EMSCommunicatorType;
 
 typedef enum {
@@ -54,3 +54,5 @@ int ems_communicator_connect(EMSCommunicator *comm);
 int ems_communicator_disconnect(EMSCommunicator *comm);
 int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg);
 void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg);
+
+void ems_communicator_set_status(EMSCommunicator *comm, EMSCommunicatorStatus status);

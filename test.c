@@ -26,6 +26,7 @@ void test_register_messages(void)
 
 EMSPeerRole role = EMS_PEER_ROLE_MASTER;
 
+#if 0
 static void *signal_thread(void *arg)
 {
     sigset_t *set = arg;
@@ -45,6 +46,7 @@ static void *signal_thread(void *arg)
 
     return NULL;
 }
+#endif
 
 int main(int argc, char **argv)
 {
@@ -71,6 +73,7 @@ int main(int argc, char **argv)
         }
     }
 
+#if 0
     /* signal handling */
     pthread_t sig_thread;
     sigset_t set;
@@ -81,7 +84,7 @@ int main(int argc, char **argv)
 
     pthread_sigmask(SIG_BLOCK, &set, NULL);
     pthread_create(&sig_thread, NULL, &signal_thread, (void *)&set);
-
+#endif
 
     peer = ems_peer_create(role);
 
@@ -95,7 +98,7 @@ int main(int argc, char **argv)
     if (peer->role == EMS_PEER_ROLE_MASTER) {
         fprintf(stderr, "I am the master. (%d)\n", getpid());
         /* We have no work yet. So just sleep to get the connection working. */
-        sleep(8);
+        sleep(3);
 
         msg = ems_message_new(EMS_TEST_MESSAGE_QUIT,
                               EMS_MESSAGE_RECIPIENT_ALL,

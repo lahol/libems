@@ -9,18 +9,5 @@ typedef void *(*PThreadCallback)(void *);
 
 #define EMS_UTIL_POINTER_TO_INT(p) ((int)(long)(p))
 
-typedef enum {
-    EMS_SOCKET_TYPE_UNKNOWN = 0,
-    EMS_SOCKET_TYPE_CONTROL = 1,
-    EMS_SOCKET_TYPE_MASTER,
-    EMS_SOCKET_TYPE_DATA
-} EMSSocketType;
-
-typedef struct {
-    int fd;
-    EMSSocketType type;
-    uint32_t id;
-} EMSSocketInfo;
-
 #include "ems-util-list.h"
 #include "ems-util-fd.h"
