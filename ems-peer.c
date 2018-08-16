@@ -5,6 +5,10 @@
 #include "ems-messages-internal.h"
 
 void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
+void *ems_peer_check_messages(EMSPeer *peer);
+void ems_peer_signal_new_internal_message(EMSPeer *peer);
+void ems_peer_wait_for_internal_message(EMSPeer *peer);
+void ems_peer_wait_for_internal_message_timeout(EMSPeer *peer, uint32_t timeout_ms);
 
 EMSPeer *ems_peer_create(EMSPeerRole role)
 {
@@ -15,10 +19,19 @@ EMSPeer *ems_peer_create(EMSPeerRole role)
 
     peer->role = role;
     ems_message_queue_init(&peer->msgqueue);
+    ems_message_queue_init(&peer->intmsgqueue);
 
     pthread_mutex_init(&peer->peer_lock, NULL);
     pthread_mutex_init(&peer->msg_available_lock, NULL);
     pthread_cond_init(&peer->msg_available_cond, NULL);
+    pthread_mutex_init(&peer->intmsg_available_lock, NULL);
+    pthread_cond_init(&peer->intmsg_available_cond, NULL);
+
+
+    if (pthread_create(&peer->check_message_thread, NULL,
+                   (PThreadCallback)ems_peer_check_messages, (void *)peer) == 0) {
+        peer->thread_running = 1;
+    }
 
     return peer;
 }
@@ -28,9 +41,7 @@ void ems_peer_destroy(EMSPeer *peer)
     if (!peer)
         return;
 
-    if (peer->destroy)
-        peer->destroy(peer);
-
+    fprintf(stderr, "%d destroy peer\n", getpid());
     EMSList *tmp;
     while (peer->communicators) {
         tmp = peer->communicators->next;
@@ -39,11 +50,21 @@ void ems_peer_destroy(EMSPeer *peer)
         peer->communicators = tmp;
     }
 
+    if (peer->thread_running) {
+        fprintf(stderr, "%d signal internal message\n", getpid());
+        ems_peer_signal_new_internal_message(peer);
+        fprintf(stderr, "%d join\n", getpid());
+        pthread_join(peer->check_message_thread, NULL);
+    }
+
     ems_message_queue_clear(&peer->msgqueue);
+    ems_message_queue_clear(&peer->intmsgqueue);
 
     pthread_mutex_destroy(&peer->peer_lock);
     pthread_mutex_destroy(&peer->msg_available_lock);
     pthread_cond_destroy(&peer->msg_available_cond);
+    pthread_mutex_destroy(&peer->intmsg_available_lock);
+    pthread_cond_destroy(&peer->intmsg_available_cond);
 
     ems_free(peer);
 }
@@ -71,11 +92,13 @@ void ems_peer_disconnect(EMSPeer *peer)
 void ems_peer_send_message(EMSPeer *peer, EMSMessage *msg)
 {
     EMSList *tmp;
+    fprintf(stderr, "%d LOCK send_message\n", getpid());
     pthread_mutex_lock(&peer->peer_lock);
     for (tmp = peer->communicators; tmp; tmp = tmp->next) {
         ems_communicator_send_message((EMSCommunicator *)tmp->data, msg);
     }
     pthread_mutex_unlock(&peer->peer_lock);
+    fprintf(stderr, "%d UNLOCK send_message\n", getpid());
 }
 
 /* Quit all communicators. */
@@ -89,9 +112,12 @@ void ems_peer_terminate(EMSPeer *peer)
         ems_free(peer->communicators);
         peer->communicators = tmp;
     }
+    peer->is_alive = 0;
     pthread_mutex_unlock(&peer->peer_lock);
 
-    peer->is_alive = 0;
+    /* Wake up message loops. */
+    ems_peer_signal_new_internal_message(peer);
+    ems_peer_signal_new_message(peer);
 }
 
 void ems_peer_shutdown(EMSPeer *peer)
@@ -114,7 +140,7 @@ void ems_peer_shutdown(EMSPeer *peer)
         while (ems_peer_get_connection_count(peer)) {
             /* The connection could be decreased after the last call and the signal
              * for the message might got lost. Therefore use a timeout. */
-            ems_peer_wait_for_message_timeout(peer, 500);
+            ems_peer_wait_for_internal_message_timeout(peer, 500);
         }
 
         fprintf(stderr, "%d No more connections, shutting down.\n", getpid());
@@ -131,9 +157,6 @@ void ems_peer_shutdown(EMSPeer *peer)
     }
 
     ems_peer_terminate(peer);
-
-    /* just to wake up */
-    ems_peer_signal_new_message(peer);
 }
 
 uint32_t ems_peer_get_connection_count(EMSPeer *peer)
@@ -142,9 +165,11 @@ uint32_t ems_peer_get_connection_count(EMSPeer *peer)
         return 0;
 
     uint32_t count = 0;
+    fprintf(stderr, "%d LOCK terminate\n", getpid());
     pthread_mutex_lock(&peer->peer_lock);
     count = peer->connection_count;
     pthread_mutex_unlock(&peer->peer_lock);
+    fprintf(stderr, "%d UNLOCK get_connection_count\n", getpid());
 
     return count;
 }
@@ -182,8 +207,11 @@ uint32_t ems_peer_get_id(EMSPeer *peer)
 void ems_peer_push_message(EMSPeer *peer, EMSMessage *msg)
 {
     if (EMS_MESSAGE_IS_INTERNAL(msg)) {
-        /* handle internal message */
-        _ems_peer_handle_internal_message(peer, msg);
+        /* handle internal message, better than push head -> priority;
+         * messages should arrive in order, but on head of queue
+         * easy to solve with filter. */
+        ems_message_queue_push_tail(&peer->intmsgqueue, msg);
+        ems_peer_signal_new_internal_message(peer);
     }
     else {
         ems_message_queue_push_tail(&peer->msgqueue, msg);
@@ -226,6 +254,51 @@ void ems_peer_wait_for_message_timeout(EMSPeer *peer, uint32_t timeout_ms)
     pthread_mutex_unlock(&peer->msg_available_lock);
 }
 
+void ems_peer_signal_new_internal_message(EMSPeer *peer)
+{
+    pthread_mutex_lock(&peer->intmsg_available_lock);
+    pthread_cond_broadcast(&peer->intmsg_available_cond);
+    pthread_mutex_unlock(&peer->intmsg_available_lock);
+}
+
+void ems_peer_wait_for_internal_message(EMSPeer *peer)
+{
+    pthread_mutex_lock(&peer->intmsg_available_lock);
+    pthread_cond_wait(&peer->intmsg_available_cond, &peer->intmsg_available_lock);
+    pthread_mutex_unlock(&peer->intmsg_available_lock);
+}
+
+void ems_peer_wait_for_internal_message_timeout(EMSPeer *peer, uint32_t timeout_ms)
+{
+    struct timespec timeout;
+
+    clock_gettime(CLOCK_REALTIME, &timeout);
+
+    timeout.tv_sec += timeout_ms / 1000;
+    timeout.tv_nsec += (timeout_ms % 1000) * 1e6;
+    if (timeout.tv_nsec >= 1e6) {
+        ++timeout.tv_sec;
+        timeout.tv_nsec -= 1e6;
+    }
+
+    pthread_mutex_lock(&peer->intmsg_available_lock);
+    pthread_cond_timedwait(&peer->intmsg_available_cond, &peer->intmsg_available_lock, &timeout);
+    pthread_mutex_unlock(&peer->intmsg_available_lock);
+}
+
+/* Get messages but filter out internal messages. */
+EMSMessage *ems_peer_get_message(EMSPeer *peer)
+{
+    /* this should not happen anymore, but, nevertheless, a wrapper is good */
+    EMSMessage *msg = NULL;
+    while ((msg = ems_message_queue_pop_head(&peer->msgqueue)) &&
+           EMS_MESSAGE_IS_INTERNAL(msg)) {
+        _ems_peer_handle_internal_message(peer, msg);
+    }
+
+    return msg;
+}
+
 void ems_peer_add_communicator(EMSPeer *peer, EMSCommunicator *comm)
 {
     if (!peer || !comm)
@@ -243,6 +316,7 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
     if (ems_unlikely(!msg))
         return;
 
+    fprintf(stderr, "%d got msg type 0x%x\n", getpid(), msg->type);
     switch (msg->type) {
         case __EMS_MESSAGE_CONNECTION_ADD:
             pthread_mutex_lock(&peer->peer_lock);
@@ -272,4 +346,17 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
     }
 
     ems_message_free(msg);
+}
+
+void *ems_peer_check_messages(EMSPeer *peer)
+{
+    EMSMessage *msg;
+    while (peer->is_alive) {
+        ems_peer_wait_for_internal_message(peer);
+        while ((msg = ems_message_queue_pop_head(&peer->intmsgqueue)) != NULL)
+            _ems_peer_handle_internal_message(peer, msg);
+    }
+
+    peer->thread_running = 0;
+    return NULL;
 }

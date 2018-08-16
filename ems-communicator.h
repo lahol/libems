@@ -22,6 +22,7 @@ typedef int (*EMSCommunicatorDisconnect)(EMSCommunicator *);
 typedef int (*EMSCommunicatorSendMessage)(EMSCommunicator *, EMSMessage *);
 typedef void (*EMSCommunicatorDestroy)(EMSCommunicator *);
 typedef void (*EMSCommunicatorHandleInternalMessage)(EMSCommunicator *, EMSMessage *);
+typedef void (*EMSCommunicatorCloseConnection)(EMSCommunicator *, uint32_t);
 
 #include "ems-peer.h"
 
@@ -38,6 +39,7 @@ struct _EMSCommunicator {
     EMSCommunicatorDisconnect disconnect;
     EMSCommunicatorSendMessage send_message;
     EMSCommunicatorHandleInternalMessage handle_int_message;
+    EMSCommunicatorCloseConnection close_connection;
 
     EMSCommunicatorStatus status;
 
@@ -59,6 +61,7 @@ int ems_communicator_connect(EMSCommunicator *comm);
 int ems_communicator_disconnect(EMSCommunicator *comm);
 int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg);
 void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg);
+void ems_communicator_close_connection(EMSCommunicator *comm, uint32_t peer_id);
 
 void ems_communicator_set_status(EMSCommunicator *comm, EMSCommunicatorStatus status);
 

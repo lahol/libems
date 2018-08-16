@@ -89,6 +89,28 @@ void ems_message_queue_push_tail(EMSMessageQueue *mq, EMSMessage *msg)
     pthread_mutex_unlock(&mq->queue_lock);
 }
 
+void ems_message_queue_push_head(EMSMessageQueue *mq, EMSMessage *msg)
+{
+    if (ems_unlikely(!mq))
+        return;
+    EMSMessageQueueEntry *entry = ems_alloc(sizeof(EMSMessageQueueEntry));
+    entry->data = msg;
+    entry->prev = NULL;
+
+    pthread_mutex_lock(&mq->queue_lock);
+
+    entry->next = mq->head;
+    if (mq->head)
+        mq->head->prev = entry;
+    else
+        mq->tail = entry;
+    mq->head = entry;
+
+    ++mq->count;
+
+    pthread_mutex_unlock(&mq->queue_lock);
+}
+
 static inline
 EMSMessage *_ems_message_queue_pop_head_unsafe(EMSMessageQueue *mq)
 {

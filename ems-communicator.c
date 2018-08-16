@@ -109,6 +109,12 @@ int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg)
     return -1;
 }
 
+void ems_communicator_close_connection(EMSCommunicator *comm, uint32_t peer_id)
+{
+    if (comm && comm->close_connection)
+        comm->close_connection(comm, peer_id);
+}
+
 void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg)
 {
     switch (msg->type) {
@@ -118,9 +124,7 @@ void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage 
             break;
         case __EMS_MESSAGE_LEAVE:
             fprintf(stderr, "got leave message from %u\n", msg->sender_id);
-            if (comm && comm->role == EMS_PEER_ROLE_SLAVE) {
-                /* destroy peer? */
-            }
+            ems_communicator_close_connection(comm, msg->sender_id);
             break;
         case __EMS_MESSAGE_TERM:
             ems_peer_push_message(comm->peer, ems_message_dup(msg));
@@ -168,5 +172,7 @@ void ems_communicator_remove_connection(EMSCommunicator *comm)
 
     --comm->open_connection_count;
     EMSMessage *msg = ems_message_new(__EMS_MESSAGE_CONNECTION_DEL, comm->peer_id, comm->peer_id, NULL, NULL);
+    fprintf(stderr, "push message\n");
     ems_peer_push_message(comm->peer, msg);
+    fprintf(stderr, "pushed message\n");
 }

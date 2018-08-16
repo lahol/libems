@@ -136,7 +136,9 @@ void ems_communicator_socket_disconnect_peers(EMSCommunicatorSocket *comm)
         si = (EMSSocketInfo *)active->data;
 
         if (si->type == EMS_SOCKET_TYPE_DATA) {
+            fprintf(stderr, "%d comm remove conn\n", getpid());
             ems_communicator_remove_connection((EMSCommunicator *)comm);
+            fprintf(stderr, "%d comm removed conn\n", getpid());
         }
         if (si->type == EMS_SOCKET_TYPE_DATA || si->type == EMS_SOCKET_TYPE_MASTER) {
             epoll_ctl(comm->epoll_fd, EPOLL_CTL_DEL, si->fd, NULL);
@@ -156,6 +158,25 @@ void ems_communicator_socket_disconnect_peer(EMSCommunicatorSocket *comm, EMSSoc
     EMSList *tmp;
     for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
         if (tmp->data == sock_info) {
+            ems_free(sock_info);
+            comm->socket_list = ems_list_delete_link(comm->socket_list, tmp);
+            ems_communicator_remove_connection((EMSCommunicator *)comm);
+            break;
+        }
+    }
+}
+
+void ems_communicator_socket_close_connection(EMSCommunicatorSocket *comm, uint32_t peer_id)
+{
+    EMSList *tmp;
+    EMSSocketInfo *sock_info = NULL;
+    for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
+        if (((EMSSocketInfo *)tmp->data)->id == peer_id) {
+            sock_info = (EMSSocketInfo *)tmp->data;
+
+            epoll_ctl(comm->epoll_fd, EPOLL_CTL_DEL, sock_info->fd, NULL);
+            close(sock_info->fd);
+
             ems_free(sock_info);
             comm->socket_list = ems_list_delete_link(comm->socket_list, tmp);
             ems_communicator_remove_connection((EMSCommunicator *)comm);
@@ -336,6 +357,7 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
             ems_communicator_socket_disconnect_peers(comm);
             status_flags &= ~_EMS_COMM_SOCKET_ACTION_DISCONNECT;
             ems_communicator_set_status((EMSCommunicator *)comm, EMS_COMM_STATUS_INITIALIZED);
+            fprintf(stderr, "%d disconnected\n", getpid());
         }
 
         if (status_flags & _EMS_COMM_SOCKET_ACTION_QUIT) {
@@ -359,6 +381,7 @@ int ems_communicator_socket_init(EMSCommunicatorSocket *comm)
     c->connect      = (EMSCommunicatorConnect)ems_communicator_socket_connect;
     c->disconnect   = (EMSCommunicatorDisconnect)ems_communicator_socket_disconnect;
     c->send_message = (EMSCommunicatorSendMessage)ems_communicator_socket_send_message;
+    c->close_connection = (EMSCommunicatorCloseConnection)ems_communicator_socket_close_connection;
 
     if (pipe(comm->control_pipe) != 0) {
         fprintf(stderr, "EMSCommunicatorSocket: Could not set up control pipe.\n");
@@ -388,6 +411,7 @@ void ems_communicator_socket_set_value(EMSCommunicatorSocket *comm, const char *
 
 void ems_communicator_socket_clear(EMSCommunicatorSocket *comm)
 {
+    fprintf(stderr, "%d socket clear, status: 0x%x\n", getpid(), comm->comm_socket_status);
     if (comm->comm_socket_status & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
         write(comm->control_pipe[1], "Q", 1);
     }

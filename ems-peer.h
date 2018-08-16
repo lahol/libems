@@ -19,6 +19,7 @@ struct _EMSPeer {
     EMSPeerRole role;
     uint32_t id;
     EMSMessageQueue msgqueue;
+    EMSMessageQueue intmsgqueue;
 
     EMSList *communicators; /* EMSCommunicator */
 
@@ -33,8 +34,13 @@ struct _EMSPeer {
     pthread_mutex_t peer_lock;
     pthread_mutex_t msg_available_lock;
     pthread_cond_t  msg_available_cond;
+    pthread_mutex_t intmsg_available_lock;
+    pthread_cond_t  intmsg_available_cond;
 
     unsigned int is_alive : 1;
+    unsigned int thread_running : 1;
+
+    pthread_t check_message_thread;
 };
 
 EMSPeer *ems_peer_create(EMSPeerRole role);
@@ -55,6 +61,8 @@ void ems_peer_push_message(EMSPeer *peer, EMSMessage *msg);
 void ems_peer_signal_new_message(EMSPeer *peer);
 void ems_peer_wait_for_message(EMSPeer *peer);
 void ems_peer_wait_for_message_timeout(EMSPeer *peer, uint32_t timeout_ms);
+/* FIXME: get message with (timed) wait? -> no, want still just peek for messages */
+EMSMessage *ems_peer_get_message(EMSPeer *peer);
 
 #include "ems-communicator.h"
 

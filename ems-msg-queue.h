@@ -21,6 +21,7 @@ void ems_message_queue_add_filter(EMSMessageQueue *mq, uint32_t msgtype);
 void ems_message_queue_clear_filter(EMSMessageQueue *mq);
 
 void ems_message_queue_push_tail(EMSMessageQueue *mq, EMSMessage *msg);
+void ems_message_queue_push_head(EMSMessageQueue *mq, EMSMessage *msg);
 
 EMSMessage *ems_message_queue_pop_head(EMSMessageQueue *mq);
 EMSMessage *ems_message_queue_peek_head(EMSMessageQueue *mq);

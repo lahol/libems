@@ -192,8 +192,7 @@ int main(int argc, char **argv)
 
         while (peer->is_alive) {
             ems_peer_wait_for_message(peer);
-            msg = ems_message_queue_pop_head(&peer->msgqueue);
-            if (msg) {
+            while ((msg = ems_peer_get_message(peer)) != NULL) {
                 fprintf(stderr, "%d MASTER received message type 0x%x\n", getpid(), msg->type);
                 ems_message_free(msg);
             }
@@ -213,8 +212,7 @@ int main(int argc, char **argv)
         
         while (peer->is_alive) {
             ems_peer_wait_for_message(peer);
-            msg = ems_message_queue_pop_head(&peer->msgqueue);
-            if (msg) {
+            while ((msg = ems_peer_get_message(peer)) != NULL) {
                 fprintf(stderr, "%d received message type 0x%x\n", getpid(), msg->type);
                 ems_message_free(msg);
             }
