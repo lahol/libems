@@ -19,7 +19,7 @@ typedef struct _EMSCommunicator EMSCommunicator;
 
 typedef int (*EMSCommunicatorConnect)(EMSCommunicator *);
 typedef int (*EMSCommunicatorDisconnect)(EMSCommunicator *);
-typedef int (*EMSCommunicatorSendMessage)(EMSCommunicator *);
+typedef int (*EMSCommunicatorSendMessage)(EMSCommunicator *, EMSMessage *);
 typedef void (*EMSCommunicatorDestroy)(EMSCommunicator *);
 typedef void (*EMSCommunicatorHandleInternalMessage)(EMSCommunicator *, EMSMessage *);
 
@@ -30,6 +30,8 @@ struct _EMSCommunicator {
     EMSPeerRole role;
 
     EMSPeer *peer;
+    uint32_t peer_id;
+    uint32_t open_connection_count;
 
     EMSCommunicatorDestroy destroy;
     EMSCommunicatorConnect connect;
@@ -50,9 +52,14 @@ void ems_communicator_set_role(EMSCommunicator *comm, EMSPeerRole role);
 
 void ems_communicator_destroy(EMSCommunicator *comm);
 
+void ems_communicator_add_connection(EMSCommunicator *comm);
+void ems_communicator_remove_connection(EMSCommunicator *comm);
+
 int ems_communicator_connect(EMSCommunicator *comm);
 int ems_communicator_disconnect(EMSCommunicator *comm);
 int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg);
 void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg);
 
 void ems_communicator_set_status(EMSCommunicator *comm, EMSCommunicatorStatus status);
+
+void ems_communicator_set_peer_id(EMSCommunicator *comm, uint32_t peer_id);

@@ -23,9 +23,17 @@ void test_register_messages(void)
     ems_message_register_type(EMS_TEST_MESSAGE_QUIT, &cls);
 }
 
+EMSPeer *peer = NULL;
 EMSPeerRole role = EMS_PEER_ROLE_MASTER;
 
-#if 0
+char *cfg_hostname = NULL;
+uint16_t cfg_port = 0;
+char *cfg_unix_socket = NULL;
+int cfg_slave_only = 0;
+int cfg_slave_count = 1;
+
+
+#if 1
 #include <pthread.h>
 #include <signal.h>
 
@@ -41,20 +49,19 @@ static void *signal_thread(void *arg)
         }
 /*        fprintf(stderr, "Signal handling thread got signal %d\n", sig);*/
 
-        if (role == EMS_PEER_ROLE_MASTER && sig == SIGINT) {
-            fprintf(stderr, "Master got SIGINT\n");
+        if (sig == SIGINT) {
+            /* lock? */
+            fprintf(stderr, "%d Caught SIGINT\n", getpid());
+            if (cfg_slave_only || role == EMS_PEER_ROLE_MASTER) {
+                ems_peer_shutdown(peer);
+                fprintf(stderr, "%d peer disconnect done\n", getpid());
+            }
         }
     }
 
     return NULL;
 }
 #endif
-
-char *cfg_hostname = NULL;
-uint16_t cfg_port = 0;
-char *cfg_unix_socket = NULL;
-int cfg_slave_only = 0;
-int cfg_slave_count = 1;
 
 int parse_options(int argc, char **argv)
 {
@@ -119,30 +126,27 @@ int main(int argc, char **argv)
 
     ems_init("EMSG");
 
-    EMSPeer *peer = NULL;
-
     EMSMessage *msg;
 
     test_register_messages();
 
-    if (!cfg_slave_only) {
-        role = EMS_PEER_ROLE_MASTER;
-        for (j = 0; j < cfg_slave_count; ++j) {
-            pid = fork();
-            if (pid != 0) {
-                fprintf(stderr, "forked: %d\n", pid);
-            }
-            else {
-                role = EMS_PEER_ROLE_SLAVE;
-                break;
-            }
+    role = cfg_slave_only ? EMS_PEER_ROLE_SLAVE : EMS_PEER_ROLE_MASTER;
+    if (cfg_slave_only && !cfg_slave_count)
+        cfg_slave_count = 1;
+
+
+    for (j = cfg_slave_only ? 1 : 0; j < cfg_slave_count; ++j) {
+        pid = fork();
+        if (pid != 0) {
+            fprintf(stderr, "forked: %d\n", pid);
+        }
+        else {
+            role = EMS_PEER_ROLE_SLAVE;
+            break;
         }
     }
-    else {
-        role = EMS_PEER_ROLE_SLAVE;
-    }
 
-#if 0
+#if 1
     /* signal handling */
     pthread_t sig_thread;
     sigset_t set;
@@ -185,22 +189,37 @@ int main(int argc, char **argv)
     if (peer->role == EMS_PEER_ROLE_MASTER) {
         fprintf(stderr, "I am the master. (%d)\n", getpid());
         /* We have no work yet. So just sleep to get the connection working. */
-        sleep(20);
 
-        msg = ems_message_new(EMS_TEST_MESSAGE_QUIT,
+        while (peer->is_alive) {
+            ems_peer_wait_for_message(peer);
+            msg = ems_message_queue_pop_head(&peer->msgqueue);
+            if (msg) {
+                fprintf(stderr, "%d MASTER received message type 0x%x\n", getpid(), msg->type);
+                ems_message_free(msg);
+            }
+        }
+
+/*        msg = ems_message_new(EMS_TEST_MESSAGE_QUIT,
                               EMS_MESSAGE_RECIPIENT_ALL,
                               EMS_MESSAGE_RECIPIENT_MASTER,
                               NULL, NULL);
         ems_peer_send_message(peer, msg);
         ems_message_free(msg);
 
-        sleep(1);
+        sleep(1);*/
     }
     else {
         fprintf(stderr, "I am a slave. (%d)\n", getpid());
         
-        ems_peer_wait_for_message(peer);
-        fprintf(stderr, "%d received message, quitting\n", getpid());
+        while (peer->is_alive) {
+            ems_peer_wait_for_message(peer);
+            msg = ems_message_queue_pop_head(&peer->msgqueue);
+            if (msg) {
+                fprintf(stderr, "%d received message type 0x%x\n", getpid(), msg->type);
+                ems_message_free(msg);
+            }
+        }
+        fprintf(stderr, "%d quitting\n", getpid());
     }
 
     ems_peer_destroy(peer);

@@ -104,7 +104,7 @@ int ems_communicator_disconnect(EMSCommunicator *comm)
 int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg)
 {
     if (comm && comm->send_message) {
-        return comm->send_message(comm);
+        return comm->send_message(comm, msg);
     }
     return -1;
 }
@@ -112,9 +112,18 @@ int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg)
 void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg)
 {
     switch (msg->type) {
-        case __EMS_MESSAGE_TYPE_SET_ID:
+        case __EMS_MESSAGE_SET_ID:
             if (comm && comm->peer)
                 ems_peer_set_id(comm->peer, ((EMSMessageIntSetId *)msg)->peer_id);
+            break;
+        case __EMS_MESSAGE_LEAVE:
+            fprintf(stderr, "got leave message from %u\n", msg->sender_id);
+            if (comm && comm->role == EMS_PEER_ROLE_SLAVE) {
+                /* destroy peer? */
+            }
+            break;
+        case __EMS_MESSAGE_TERM:
+            ems_peer_push_message(comm->peer, ems_message_dup(msg));
             break;
         default:
             if (comm && comm->handle_int_message)
@@ -133,3 +142,31 @@ void ems_communicator_set_status(EMSCommunicator *comm, EMSCommunicatorStatus st
     }
 }
 
+void ems_communicator_set_peer_id(EMSCommunicator *comm, uint32_t peer_id)
+{
+    if (ems_unlikely(!comm))
+        return;
+
+    comm->peer_id = peer_id;
+}
+
+void ems_communicator_add_connection(EMSCommunicator *comm)
+{
+    if (ems_unlikely(!comm))
+        return;
+
+    ++comm->open_connection_count;
+
+    EMSMessage *msg = ems_message_new(__EMS_MESSAGE_CONNECTION_ADD, comm->peer_id, comm->peer_id, NULL, NULL);
+    ems_peer_push_message(comm->peer, msg);
+}
+
+void ems_communicator_remove_connection(EMSCommunicator *comm)
+{
+    if (ems_unlikely(!comm))
+        return;
+
+    --comm->open_connection_count;
+    EMSMessage *msg = ems_message_new(__EMS_MESSAGE_CONNECTION_DEL, comm->peer_id, comm->peer_id, NULL, NULL);
+    ems_peer_push_message(comm->peer, msg);
+}
