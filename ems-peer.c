@@ -53,6 +53,8 @@ void ems_peer_destroy(EMSPeer *peer)
         peer->communicators = tmp;
     }
 
+    ems_peer_stop_event_loop(peer);
+
     if (peer->thread_running) {
         /* signal message to wake up thread */
         ems_peer_signal_new_message(peer);
@@ -313,3 +315,79 @@ void *ems_peer_check_messages(EMSPeer *peer)
     peer->thread_running = 0;
     return NULL;
 }
+
+struct _EMSPeerEventCallbackData {
+    EMSPeer *peer;
+    EMSPeerEventCallback event_cb;
+    void *userdata;
+};
+
+void *_ems_peer_event_loop(struct _EMSPeerEventCallbackData *data)
+{
+    /* msg checking */
+    EMSMessage *msg;
+    while (data->peer->is_alive && data->peer->msg_thread_enabled) {
+        ems_peer_wait_for_message(data->peer);
+        while (data->peer->msg_thread_enabled &&
+                (msg = ems_peer_get_message(data->peer)) != NULL) {
+            if (data->event_cb)
+                data->event_cb(data->peer, msg, data->userdata);
+            ems_message_free(msg);
+        }
+    }
+
+    /* Make sure this represents the actual status (early return could set this to zero before
+     * we even set it to 1. */
+    pthread_mutex_lock(&data->peer->peer_lock);
+    data->peer->msg_thread_running = 0;
+    pthread_mutex_unlock(&data->peer->peer_lock);
+
+    ems_free(data);
+
+    return NULL;
+}
+
+/* Run a event loop waiting for messages in its own thread and call event_cb on new messages. */
+void ems_peer_start_event_loop(EMSPeer *peer, EMSPeerEventCallback event_cb, void *userdata, int do_return)
+{
+    if (ems_unlikely(!peer))
+        return;
+    if (!peer->is_alive)
+        return;
+    if (peer->msg_thread_running || peer->msg_thread_enabled)
+        return;
+    peer->msg_thread_enabled = 1;
+    struct _EMSPeerEventCallbackData *data = ems_alloc(sizeof(struct _EMSPeerEventCallbackData));
+    data->peer = peer;
+    data->event_cb = event_cb;
+    data->userdata = userdata;
+
+    if (do_return) {
+        pthread_mutex_lock(&peer->peer_lock);
+        if (pthread_create(&peer->event_loop, NULL,
+                    (PThreadCallback)_ems_peer_event_loop, (void *)data) == 0)
+            peer->msg_thread_running = 1;
+        pthread_mutex_unlock(&peer->peer_lock);
+    }
+    else {
+        /* Do not return until loop is done. */
+        _ems_peer_event_loop(data);
+    }
+}
+
+/* Stop a possible event loop */
+void ems_peer_stop_event_loop(EMSPeer *peer)
+{
+    if (ems_unlikely(!peer))
+        return;
+    peer->msg_thread_enabled = 0;
+    if (peer->msg_thread_running) {
+        ems_peer_signal_new_message(peer);
+        pthread_join(peer->event_loop, NULL);
+    }
+    else {
+        /* just wake up event loop */
+        ems_peer_signal_new_message(peer);
+    }
+}
+

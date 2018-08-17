@@ -31,8 +31,6 @@ typedef enum {
 
 typedef struct _EMSPeer EMSPeer;
 
-typedef void (*EMSPeerChangedCallback)(EMSPeer *, void *userdata);
-
 struct _EMSPeer {
     /* The role of this peer. Either master or slave. */
     EMSPeerRole role;
@@ -69,8 +67,15 @@ struct _EMSPeer {
      */
     unsigned int thread_running : 1;
 
+    /* Flag indicating that the message queue thread is running. */
+    unsigned int msg_thread_running : 1;
+
+    /* Flag indicating that checking for messages is enabled. */
+    unsigned int msg_thread_enabled : 1;
+
     /* The thread checking for internal messages. */
     pthread_t check_message_thread;
+    pthread_t event_loop;
 };
 
 /* Create a new peer of the specified role. */
@@ -136,3 +141,11 @@ EMSMessage *ems_peer_get_message(EMSPeer *peer);
 
 /* Add a communicator to the peer. */
 void ems_peer_add_communicator(EMSPeer *peer, EMSCommunicator *comm);
+
+/* Run a event loop waiting for messages in its own thread and call event_cb on new messages. */
+typedef void (*EMSPeerEventCallback)(EMSPeer *, EMSMessage *, void *);
+void ems_peer_start_event_loop(EMSPeer *peer, EMSPeerEventCallback event_cb, void *userdata, int do_return);
+
+/* Stop a possible event loop */
+void ems_peer_stop_event_loop(EMSPeer *peer);
+

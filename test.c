@@ -109,6 +109,14 @@ int parse_options(int argc, char **argv)
     return 0;
 }
 
+void handle_peer_message(EMSPeer *peer, EMSMessage *msg, void *userdata)
+{
+    fprintf(stderr, "%d %s received msg 0x%08x\n",
+            getpid(),
+            peer->role == EMS_PEER_ROLE_MASTER ? "MASTER" : "SLAVE",
+            msg->type);
+}
+
 int main(int argc, char **argv)
 {
     int j;
@@ -124,8 +132,6 @@ int main(int argc, char **argv)
             cfg_hostname, cfg_port, cfg_unix_socket, cfg_slave_count, cfg_slave_only);
 
     ems_init("EMSG");
-
-    EMSMessage *msg;
 
     test_register_messages();
 
@@ -187,37 +193,12 @@ int main(int argc, char **argv)
 
     if (peer->role == EMS_PEER_ROLE_MASTER) {
         fprintf(stderr, "I am the master. (%d)\n", getpid());
-        /* We have no work yet. So just sleep to get the connection working. */
-
-        while (peer->is_alive) {
-            ems_peer_wait_for_message(peer);
-            while ((msg = ems_peer_get_message(peer)) != NULL) {
-                fprintf(stderr, "%d MASTER received message type 0x%x\n", getpid(), msg->type);
-                ems_message_free(msg);
-            }
-        }
-
-/*        msg = ems_message_new(EMS_TEST_MESSAGE_QUIT,
-                              EMS_MESSAGE_RECIPIENT_ALL,
-                              EMS_MESSAGE_RECIPIENT_MASTER,
-                              NULL, NULL);
-        ems_peer_send_message(peer, msg);
-        ems_message_free(msg);
-
-        sleep(1);*/
     }
     else {
         fprintf(stderr, "I am a slave. (%d)\n", getpid());
-        
-        while (peer->is_alive) {
-            ems_peer_wait_for_message(peer);
-            while ((msg = ems_peer_get_message(peer)) != NULL) {
-                fprintf(stderr, "%d received message type 0x%x\n", getpid(), msg->type);
-                ems_message_free(msg);
-            }
-        }
-        fprintf(stderr, "%d quitting\n", getpid());
     }
+
+    ems_peer_start_event_loop(peer, handle_peer_message, NULL, 0);
 
     ems_peer_destroy(peer);
 
