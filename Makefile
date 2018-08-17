@@ -25,7 +25,7 @@ install:
 	install libems.so.1.0 $(PREFIX)/lib/
 	ln -sf $(PREFIX)/lib/libems.so.1.0 $(PREFIX)/lib/libems.so.1
 	ln -sf $(PREFIX)/lib/libems.so.1 $(PREFIX)/lib/libems.so
-	cp ems-peer.h ems-message.h ems-msg-queue.h ems-communicator.h ems-util.h ems-util-list.h ems-util-fd.h $(PREFIX)/include
+	cp ems-peer.h ems-message.h ems-msg-queue.h ems-communicator.h ems-util.h ems-util-list.h ems-util-fd.h ems-status-messages.h $(PREFIX)/include
 
 clean:
 	$(RM) libems.so* $(ems_OBJ)

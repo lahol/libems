@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "ems-peer.h"
 #include "ems.h"
 #include <getopt.h>
 #include <string.h>
 
-#define EMS_TEST_MESSAGE_QUIT      1
+#define EMS_TEST_MESSAGE_QUIT      (EMS_MESSAGE_USER + 1)
 
 void test_register_messages(void)
 {

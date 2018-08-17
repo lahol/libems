@@ -1,3 +1,4 @@
+/* Initialize or cleanup the library. */
 #include "ems.h"
 #include "ems-messages-internal.h"
 #include "ems-error.h"

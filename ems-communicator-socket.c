@@ -121,10 +121,9 @@ int ems_communicator_socket_accept(EMSCommunicatorSocket *comm, int fd)
 
 }
 
+/* Remove all sockets not being the control socket. */
 void ems_communicator_socket_disconnect_peers(EMSCommunicatorSocket *comm)
 {
-    /* remove everything not the control socket. */
-
     EMSList *tmp;
     EMSList *active = comm->socket_list;
     EMSSocketInfo *si;
@@ -146,6 +145,7 @@ void ems_communicator_socket_disconnect_peers(EMSCommunicatorSocket *comm)
     }
 }
 
+/* Remove the specified socket. */
 void ems_communicator_socket_disconnect_peer(EMSCommunicatorSocket *comm, EMSSocketInfo *sock_info)
 {
     epoll_ctl(comm->epoll_fd, EPOLL_CTL_DEL, sock_info->fd, NULL);
@@ -181,6 +181,7 @@ void ems_communicator_socket_close_connection(EMSCommunicatorSocket *comm, uint3
     }
 }
 
+/* Find the socket associated to the given peer. */
 EMSSocketInfo *_ems_communicator_socket_get_peer(EMSCommunicatorSocket *comm, uint32_t peer_id)
 {
     EMSList *tmp;
@@ -191,6 +192,7 @@ EMSSocketInfo *_ems_communicator_socket_get_peer(EMSCommunicatorSocket *comm, ui
     return NULL;
 }
 
+/* Check for outgoing messages and deliver them to the peers. */
 void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *comm)
 {
     EMSMessage *msg;
@@ -220,6 +222,7 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
     }
 }
 
+/* Read an incoming message, decode it and push it to the message queue of the peer. */
 int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, EMSSocketInfo *sock_info)
 {
     uint8_t *buffer = ems_alloc(EMS_MESSAGE_HEADER_SIZE);
@@ -248,6 +251,8 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
         ems_message_decode_payload(msg, buffer, payload_size);
     }
 
+    /* FIXME: Do we really need this distinction? Can’t we just push to the peer and
+     * let the peer handle this? */
     if (EMS_MESSAGE_IS_INTERNAL(msg)) {
         ems_communicator_handle_internal_message((EMSCommunicator *)comm, msg);
         ems_message_free(msg);
@@ -259,6 +264,9 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
     return EMS_OK;
 }
 
+/* The main thread of the communicator. Wait for data in the control socket, new data,
+ * or incoming connections.
+ */
 void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
 {
     int epoll_timeout = -1;
@@ -331,6 +339,10 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
             }
         }
 
+        /* The communicator should connect. If successful, disable the epoll timeout
+         * and set the status (and flags) appropriately. If not, the timeout is set
+         * to 100 ms to try again later.
+         */
         if (status_flags & _EMS_COMM_SOCKET_ACTION_CONNECTING) {
             if ((rc = ems_communicator_socket_try_connect(comm)) == EMS_OK) {
                 status_flags &= ~_EMS_COMM_SOCKET_ACTION_CONNECTING;

@@ -1,3 +1,4 @@
+/* Wrapper for the class specific communicators. */
 #include "ems-communicator.h"
 
 #include <stdlib.h>
@@ -10,6 +11,7 @@
 #include "ems-communicator-inet.h"
 #include <string.h>
 
+/* Create a new communicator of the given type with the given key/value pairs. */
 EMSCommunicator *ems_communicator_create(EMSCommunicatorType type, ...)
 {
     va_list args;

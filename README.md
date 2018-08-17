@@ -10,6 +10,9 @@ EMSMessage, and have to be registered via ems_message_register_type. The message
 identifiers have to be provided beforehand and must be unique 31-bit integers
 (messages with the high bit set are used for internal purposes).
 
+We use the epoll interface in the socket based communicators. So this library
+is Linux-only.
+
 A small usage example is given in test.c.
 
 There is still a lot to do. For example:
@@ -17,3 +20,5 @@ There is still a lot to do. For example:
  * A TCP connector.
  * Documentation.
  * A more flexible API (e.g., change settings of connectors after creation).
+
+This library is released under the terms of the MIT license. See LICENSE.

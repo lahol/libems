@@ -1,5 +1,6 @@
 #include "ems-messages-internal.h"
 #include "ems-message.h"
+#include "ems-status-messages.h"
 #include "ems-util.h"
 #include "ems-memory.h"
 #include "ems-error.h"
@@ -42,8 +43,34 @@ void _ems_message_int_set_id_copy(EMSMessage *dst, EMSMessage *src)
 }
 
 /* __EMS_MESSAGE_LEAVE */
-/* nothing special needed */
+/* nothing to do here */
 
+/* __EMS_MESSAGE_TERM */
+/* nothing to do here */
+
+/* __EMS_MESSAGE_TERM_ACK */
+/* nothing to do here */
+
+/* __EMS_MESSAGE_CONNECTION_ADD */
+/* nothing to do here */
+
+/* __EMS_MESSAGE_CONNECTION_DEL */
+/* nothing to do here */
+
+/* EMS_MESSAGE_STATUS_PEER_CHANGED */
+void _ems_messages_status_peer_changed_set_value(EMSMessage *msg, const char *key, const void *value)
+{
+    if (!strcmp(key, "peer")) {
+        ((EMSMessageStatusPeerChanged *)msg)->peer = (EMSPeer *)value;
+    }
+}
+
+void _ems_messages_status_peer_changed_copy(EMSMessage *dst, EMSMessage *src)
+{
+    ((EMSMessageStatusPeerChanged *)dst)->peer = ((EMSMessageStatusPeerChanged *)src)->peer;
+}
+
+/* Register the internal messages. */
 int ems_messages_register_internal_types(void)
 {
     EMSMessageClass msgclass;
@@ -100,6 +127,16 @@ int ems_messages_register_internal_types(void)
     msgclass.size = sizeof(EMSMessageIntConnectionDel);
 
     if ((rc = ems_message_register_type(__EMS_MESSAGE_CONNECTION_DEL, &msgclass)) != EMS_OK)
+        return rc;
+
+    /* EMS_MESSAGE_STATUS_PEER_CHANGED */
+    memset(&msgclass, 0, sizeof(EMSMessageClass));
+    msgclass.msgtype = EMS_MESSAGE_STATUS_PEER_CHANGED;
+    msgclass.size = sizeof(EMSMessageStatusPeerChanged);
+    msgclass.msg_set_value = _ems_messages_status_peer_changed_set_value;
+    msgclass.msg_copy = _ems_messages_status_peer_changed_copy;
+
+    if ((rc = ems_message_register_type(EMS_MESSAGE_STATUS_PEER_CHANGED, &msgclass)) != EMS_OK)
         return rc;
 
     return EMS_OK;

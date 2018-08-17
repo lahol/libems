@@ -1,3 +1,8 @@
+/* Internal messages used for inter-peer communication
+ * the user has nothing to do with.
+ * All internal messages will have the high bit set to 1, which
+ * the user-defined messages are not allowed to.
+ */
 #pragma once
 
 #include "ems-message.h"
@@ -31,4 +36,5 @@ typedef EMSMessage EMSMessageIntConnectionAdd;
 #define __EMS_MESSAGE_CONNECTION_DEL 0x80000006
 typedef EMSMessage EMSMessageIntConnectionDel;
 
+/* Register those internal types. This gets called once from ems_init. */
 int ems_messages_register_internal_types(void);

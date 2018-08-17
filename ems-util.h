@@ -1,3 +1,4 @@
+/* Some utilities used throughout the library. */
 #pragma once
 
 #include <stdint.h>

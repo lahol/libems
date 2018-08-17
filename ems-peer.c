@@ -2,9 +2,20 @@
 #include "ems-memory.h"
 #include <memory.h>
 #include "ems-messages-internal.h"
+#include "ems-status-messages.h"
 
 void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
 void *ems_peer_check_messages(EMSPeer *peer);
+
+void _ems_peer_signal_change(EMSPeer *peer)
+{
+    EMSMessage *msg = ems_message_new(EMS_MESSAGE_STATUS_PEER_CHANGED,
+                                      peer->id,
+                                      peer->id,
+                                      "peer", peer,
+                                      NULL, NULL);
+    ems_peer_push_message(peer, msg);
+}
 
 EMSPeer *ems_peer_create(EMSPeerRole role)
 {
@@ -156,7 +167,6 @@ uint32_t ems_peer_get_connection_count(EMSPeer *peer)
 
 uint32_t ems_peer_generate_new_slave_id(EMSPeer *peer)
 {
-    /* FIXME: lock/unlock, may be called by different threads for multiple communicators */
     uint32_t new_id;
     pthread_mutex_lock(&peer->peer_lock);
     new_id = ++peer->max_slave_id;
@@ -255,11 +265,13 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
             pthread_mutex_lock(&peer->peer_lock);
             ++peer->connection_count;
             pthread_mutex_unlock(&peer->peer_lock);
+            _ems_peer_signal_change(peer);
             break;
         case __EMS_MESSAGE_CONNECTION_DEL:
             pthread_mutex_lock(&peer->peer_lock);
             --peer->connection_count;
             pthread_mutex_unlock(&peer->peer_lock);
+            _ems_peer_signal_change(peer);
             break;
         case __EMS_MESSAGE_TERM:
             {
@@ -280,11 +292,13 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
     ems_message_free(msg);
 }
 
+/* Filter for internal messages. */
 static int _ems_peer_filter_internal_message(EMSMessage *msg, void *nil)
 {
-    return EMS_MESSAGE_IS_INTERNAL(msg) ? 0 : 1;
+    return !EMS_MESSAGE_IS_INTERNAL(msg);
 }
 
+/* Check for internal messages. */
 void *ems_peer_check_messages(EMSPeer *peer)
 {
     EMSMessage *msg;

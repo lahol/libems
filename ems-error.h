@@ -1,3 +1,4 @@
+/* This file contains all possible error codes that may be returned. */
 #pragma once
 
 /* Everything is fine. */

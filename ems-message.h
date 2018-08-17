@@ -19,7 +19,7 @@ typedef struct {
  * 4 byte: sender_id
  * 4 byte: payload size
  */
-#define EMS_MESSAGE_HEADER_SIZE 20 /* magic + the above */
+#define EMS_MESSAGE_HEADER_SIZE 20 /* magic + the above + payload_size*/
 
 typedef struct {
     /* The type of the message belonging to this class. */
@@ -100,8 +100,18 @@ void ems_message_free(EMSMessage *msg);
 /* Message, userdata */
 typedef void (*EMSHandleMessage)(EMSMessage *, void *);
 
+/* Check whether this is an internal message. All internal messages
+ * have the high bit set. Other messages must not use this bit.
+ */
 #define EMS_MESSAGE_IS_INTERNAL(msg) ((msg) && ((msg)->type & 0x80000000))
 
+/* The following functions provide means to read/write integers to or from the
+ * byte stream payload. While not required – we do not care for the payload –
+ * those are strongly recommended, since they will take care of the byte order
+ * for you.
+ */
+
+/* Write a 32 bit value to the payload at a given offset. */
 static inline void ems_message_write_u32(uint8_t *payload, uint32_t offset, uint32_t value)
 {
     value = htonl(value);
@@ -111,6 +121,7 @@ static inline void ems_message_write_u32(uint8_t *payload, uint32_t offset, uint
     payload[offset + 3] = (value >> 24) & 0xff;
 }
 
+/* Write a 64 bit value to the payload at a given offset. */
 static inline void ems_message_write_u64(uint8_t *payload, uint32_t offset, uint64_t value)
 {
     uint32_t vl = (uint32_t)(value & 0xffffffff);
@@ -119,6 +130,7 @@ static inline void ems_message_write_u64(uint8_t *payload, uint32_t offset, uint
     ems_message_write_u32(payload, offset + 4, vh);
 }
 
+/* Read a 32 bit value from the payload at a given offset. */
 static inline uint32_t ems_message_read_u32(uint8_t *payload, uint32_t offset)
 {
     uint32_t value;
@@ -130,6 +142,7 @@ static inline uint32_t ems_message_read_u32(uint8_t *payload, uint32_t offset)
     return ntohl(value);
 }
 
+/* Read a 64 bit value from the payload at a given offset. */
 static inline uint64_t ems_message_read_u64(uint8_t *payload, uint32_t offset)
 {
     uint32_t vl;

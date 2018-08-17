@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include "ems-error.h"
 
+/* Return the ip address of the host given by hostname. */
 in_addr_t _ems_get_ip_address(const char *hostname) {
     struct in_addr addr;
     struct hostent *host;
