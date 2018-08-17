@@ -123,7 +123,6 @@ void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage 
                 ems_peer_set_id(comm->peer, ((EMSMessageIntSetId *)msg)->peer_id);
             break;
         case __EMS_MESSAGE_LEAVE:
-            fprintf(stderr, "got leave message from %u\n", msg->sender_id);
             ems_communicator_close_connection(comm, msg->sender_id);
             break;
         case __EMS_MESSAGE_TERM:
@@ -172,7 +171,5 @@ void ems_communicator_remove_connection(EMSCommunicator *comm)
 
     --comm->open_connection_count;
     EMSMessage *msg = ems_message_new(__EMS_MESSAGE_CONNECTION_DEL, comm->peer_id, comm->peer_id, NULL, NULL);
-    fprintf(stderr, "push message\n");
     ems_peer_push_message(comm->peer, msg);
-    fprintf(stderr, "pushed message\n");
 }

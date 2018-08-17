@@ -1,5 +1,4 @@
 #include "ems-util-fd.h"
-#include <stdio.h>
 
 ssize_t ems_util_write_full(int fd, uint8_t *buffer, size_t length)
 {

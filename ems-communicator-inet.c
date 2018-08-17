@@ -1,7 +1,6 @@
 #include "ems-communicator-inet.h"
 #include "ems-memory.h"
 #include <memory.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include "ems-util.h"
@@ -52,25 +51,19 @@ int ems_communicator_inet_try_connect(EMSCommunicatorInet *comm)
         addr.sin_addr.s_addr = INADDR_ANY;
 
         if (bind(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
-            fprintf(stderr, "EMSCommunicatorInet: Error binding socket.\n");
             close(sockfd);
             return -1;
         }
 
         listen(sockfd, 10);
-
-        fprintf(stderr, "EMSCommunicatorInet: Connected master.\n");
     }
     else {
         addr.sin_addr.s_addr = _ems_get_ip_address(comm->hostname);
 
         if (connect(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
-            fprintf(stderr, "EMSCommunicatorInet: Error connecting socket.\n");
             close(sockfd);
             return -1;
         }
-
-        fprintf(stderr, "EMSCommunicatorInet: Connected slave.\n");
     }
 
     return sockfd;
@@ -78,7 +71,6 @@ int ems_communicator_inet_try_connect(EMSCommunicatorInet *comm)
 
 int ems_communicator_inet_accept(EMSCommunicatorInet *comm, int fd)
 {
-    fprintf(stderr, "EMSCommunicatorInet: Try accepting slave\n");
     struct sockaddr_in addr;
     socklen_t len = sizeof(struct sockaddr_in);
     return accept(fd, (struct sockaddr *)&addr, &len);
@@ -130,6 +122,5 @@ EMSCommunicator *ems_communicator_inet_create(va_list args)
         return NULL;
     }
 
-    fprintf(stderr, "Created Inet communicator for %d.\n", getpid());
     return comm;
 }

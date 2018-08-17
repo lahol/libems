@@ -56,7 +56,6 @@ int ems_communicator_socket_connect(EMSCommunicatorSocket *comm)
 
 int ems_communicator_socket_disconnect(EMSCommunicatorSocket *comm)
 {
-    fprintf(stderr, "ems communicator type %u disconnecting\n", ((EMSCommunicator *)comm)->type);
     write(comm->control_pipe[1], "D", 1);
     return EMS_OK;
 }
@@ -107,7 +106,6 @@ int ems_communicator_socket_accept(EMSCommunicatorSocket *comm, int fd)
     uint32_t new_id = 0;
     new_id = ems_peer_generate_new_slave_id(((EMSCommunicator *)comm)->peer);
     socket_info->id = new_id;
-    fprintf(stderr, "Accepted slave %d\n", new_id);
 
     EMSMessage *msg = ems_message_new(__EMS_MESSAGE_SET_ID,
                                       new_id,
@@ -136,9 +134,7 @@ void ems_communicator_socket_disconnect_peers(EMSCommunicatorSocket *comm)
         si = (EMSSocketInfo *)active->data;
 
         if (si->type == EMS_SOCKET_TYPE_DATA) {
-            fprintf(stderr, "%d comm remove conn\n", getpid());
             ems_communicator_remove_connection((EMSCommunicator *)comm);
-            fprintf(stderr, "%d comm removed conn\n", getpid());
         }
         if (si->type == EMS_SOCKET_TYPE_DATA || si->type == EMS_SOCKET_TYPE_MASTER) {
             epoll_ctl(comm->epoll_fd, EPOLL_CTL_DEL, si->fd, NULL);
@@ -230,7 +226,6 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
 
     ssize_t rc;
     if ((rc = ems_util_read_full(sock_info->fd, buffer, EMS_MESSAGE_HEADER_SIZE)) <= 0) {
-        fprintf(stderr, "error reading message header\n");
         ems_free(buffer);
         return EMS_ERROR_INVALID_SOCKET;
     }
@@ -282,13 +277,10 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
     ems_communicator_socket_add_socket(comm, comm->control_pipe[0], EMS_SOCKET_TYPE_CONTROL);
 
     while (1) {
-        fprintf(stderr, "%d wait for descriptors\n", getpid());
         event_count = epoll_wait(comm->epoll_fd, incoming, 16, epoll_timeout);
         /* Handle messages */
         for (j = 0; j < event_count; ++j) {
             sock_info = (EMSSocketInfo *)incoming[j].data.ptr;
-            fprintf(stderr, "%d handle %d/%d ready descriptors, type: %d\n",
-                    getpid(), j+1, event_count, sock_info->type);
             switch (sock_info->type) {
                 case EMS_SOCKET_TYPE_CONTROL:
                     {
@@ -319,10 +311,7 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
                     break;
                 case EMS_SOCKET_TYPE_DATA:
                     /* read messages */
-                    fprintf(stderr, "%d data: 0x%x\n", getpid(), incoming[j].events);
                     if (incoming[j].events & (EPOLLERR | EPOLLHUP)) {
-                        fprintf(stderr, "%d Error in connection, removing; events: 0x%x\n",
-                                getpid(), incoming[j].events);
                         ems_communicator_socket_disconnect_peer(comm, sock_info);
                         /* FIXME: if we got no bye message and we are a slave, try to reconnect */
                     }
@@ -353,16 +342,13 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
                 epoll_timeout = 100;
         }
         else if (status_flags & _EMS_COMM_SOCKET_ACTION_DISCONNECT) {
-            fprintf(stderr, "%d got disconnect action\n", getpid());
             ems_communicator_socket_disconnect_peers(comm);
             status_flags &= ~_EMS_COMM_SOCKET_ACTION_DISCONNECT;
             ems_communicator_set_status((EMSCommunicator *)comm, EMS_COMM_STATUS_INITIALIZED);
-            fprintf(stderr, "%d disconnected\n", getpid());
         }
 
         if (status_flags & _EMS_COMM_SOCKET_ACTION_QUIT) {
             /* we disconnected earlier */
-            fprintf(stderr, "quitting %d\n", getpid());
             break;
         }
 
@@ -411,7 +397,6 @@ void ems_communicator_socket_set_value(EMSCommunicatorSocket *comm, const char *
 
 void ems_communicator_socket_clear(EMSCommunicatorSocket *comm)
 {
-    fprintf(stderr, "%d socket clear, status: 0x%x\n", getpid(), comm->comm_socket_status);
     if (comm->comm_socket_status & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
         write(comm->control_pipe[1], "Q", 1);
     }

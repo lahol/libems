@@ -1,10 +1,8 @@
 #include "ems-communicator-unix.h"
 #include "ems-memory.h"
 #include <memory.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-/*#include <sys/epoll.h>*/
 #include "ems-util.h"
 #include "ems-peer.h"
 #include <sys/types.h>
@@ -14,7 +12,6 @@
 
 int ems_communicator_unix_destroy(EMSCommunicatorUnix *comm)
 {
-    fprintf(stderr, "unix destroy %d\n", getpid());
     ems_communicator_socket_clear((EMSCommunicatorSocket *)comm);
     ems_free(comm);
     return 0;
@@ -24,7 +21,6 @@ int ems_communicator_unix_destroy(EMSCommunicatorUnix *comm)
 int ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
 {
     /* Depending on role, bind socket or connect */
-    fprintf(stderr, "try connect %d\n", getpid());
     struct sockaddr_un addr;
     int sockfd;
 
@@ -41,24 +37,18 @@ int ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
         unlink(comm->socket_name);
 
         if (bind(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) < 0) {
-            fprintf(stderr, "EMSCommunicatorUnix: Error binding socket.\n");
             close(sockfd);
             return -1;
         }
 
         listen(sockfd, 10);
-
-        fprintf(stderr, "connected master\n");
     }
     else {
         /* try to connect to socket */
         if (connect(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) < 0) {
-            fprintf(stderr, "EMSCommunicatorUnix: Error connecting socket.\n");
             close(sockfd);
             return -1;
         }
-
-        fprintf(stderr, "connected slave: %d\n", sockfd);
     }
 
     return sockfd;
@@ -66,7 +56,6 @@ int ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
 
 int ems_communicator_unix_accept(EMSCommunicatorUnix *comm, int fd)
 {
-    fprintf(stderr, "try accepting slave\n");
     struct sockaddr_un addr;
     socklen_t len = sizeof(struct sockaddr_un);
     return accept(fd, (struct sockaddr *)&addr, &len);
@@ -112,7 +101,6 @@ EMSCommunicator *ems_communicator_unix_create(va_list args)
         return NULL;
     }
 
-    fprintf(stderr, "Created Unix communicator for %d.\n", getpid());
     return comm;
 }
 
