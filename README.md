@@ -1,4 +1,4 @@
-= libems =
+# libems #
 libems stands for event-driven master-slave. The intention of this library is
 to provide a simple mechanism for master-slave applications to exchange messages.
 More than that, this shall happen transparently for the application, i.e.,
