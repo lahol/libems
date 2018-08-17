@@ -128,6 +128,21 @@ EMSMessage *_ems_message_queue_pop_head_unsafe(EMSMessageQueue *mq)
     return msg;
 }
 
+static inline
+void _ems_message_queue_remove_entry_unsafe(EMSMessageQueue *mq, EMSMessageQueueEntry *entry)
+{
+    if (entry->next)
+        entry->next->prev = entry->prev;
+    else
+        mq->tail = entry->prev;
+    if (entry->prev)
+        entry->prev->next = entry->next;
+    else
+        mq->head = entry->next;
+    ems_free(entry);
+    --mq->count;
+}
+
 EMSMessage *ems_message_queue_pop_head(EMSMessageQueue *mq)
 {
     if (ems_unlikely(!mq))
@@ -180,16 +195,36 @@ EMSMessage *ems_message_queue_pop_filtered(EMSMessageQueue *mq)
         goto done;
 found:
         msg = tmp->data;
-        if (tmp->next)
-            tmp->next->prev = tmp->prev;
-        else
-            mq->tail = tmp->prev;
-        if (tmp->prev)
-            tmp->prev->next = tmp->next;
-        else
-            mq->head = tmp->next;
-        ems_free(tmp);
-        --mq->count;
+        _ems_message_queue_remove_entry_unsafe(mq, tmp);
+    }
+
+done:
+    pthread_mutex_unlock(&mq->queue_lock);
+
+    return msg;
+}
+
+EMSMessage *ems_message_queue_pop_matching(EMSMessageQueue *mq, EMSMessageFilterFunc filter, void *userdata)
+{
+    if (ems_unlikely(!mq))
+        return NULL;
+
+    EMSMessage *msg = NULL;
+    EMSMessageQueueEntry *tmp;
+
+    pthread_mutex_lock(&mq->queue_lock);
+    if (ems_unlikely(!filter)) {
+        msg = _ems_message_queue_pop_head_unsafe(mq);
+    }
+    else {
+        for (tmp = mq->head; tmp; tmp = tmp->next) {
+            if (filter((EMSMessage *)tmp->data, userdata) == 0)
+                goto found;
+        }
+        goto done;
+found:
+        msg = tmp->data;
+        _ems_message_queue_remove_entry_unsafe(mq, tmp);
     }
 
 done:

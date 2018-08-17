@@ -27,3 +27,6 @@ EMSMessage *ems_message_queue_pop_head(EMSMessageQueue *mq);
 EMSMessage *ems_message_queue_peek_head(EMSMessageQueue *mq);
 EMSMessage *ems_message_queue_pop_filtered(EMSMessageQueue *mq);
 EMSMessage *ems_message_queue_peek_filtered(EMSMessageQueue *mq);
+
+typedef int (*EMSMessageFilterFunc)(EMSMessage *, void *);
+EMSMessage *ems_message_queue_pop_matching(EMSMessageQueue *mq, EMSMessageFilterFunc filter, void *userdata);

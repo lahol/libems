@@ -19,7 +19,6 @@ struct _EMSPeer {
     EMSPeerRole role;
     uint32_t id;
     EMSMessageQueue msgqueue;
-    EMSMessageQueue intmsgqueue;
 
     EMSList *communicators; /* EMSCommunicator */
 
@@ -34,8 +33,6 @@ struct _EMSPeer {
     pthread_mutex_t peer_lock;
     pthread_mutex_t msg_available_lock;
     pthread_cond_t  msg_available_cond;
-    pthread_mutex_t intmsg_available_lock;
-    pthread_cond_t  intmsg_available_cond;
 
     unsigned int is_alive : 1;
     unsigned int thread_running : 1;
