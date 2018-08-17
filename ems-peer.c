@@ -188,6 +188,8 @@ void ems_peer_set_id(EMSPeer *peer, uint32_t id)
     }
 
     pthread_mutex_unlock(&peer->peer_lock);
+
+    _ems_peer_signal_change(peer);
 }
 
 uint32_t ems_peer_get_id(EMSPeer *peer)

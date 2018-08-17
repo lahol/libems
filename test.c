@@ -111,10 +111,11 @@ int parse_options(int argc, char **argv)
 
 void handle_peer_message(EMSPeer *peer, EMSMessage *msg, void *userdata)
 {
-    fprintf(stderr, "%d %s received msg 0x%08x\n",
+    fprintf(stderr, "%d %s received msg 0x%08x, peer_id: %d\n",
             getpid(),
             peer->role == EMS_PEER_ROLE_MASTER ? "MASTER" : "SLAVE",
-            msg->type);
+            msg->type,
+            ems_peer_get_id(peer));
 }
 
 int main(int argc, char **argv)
