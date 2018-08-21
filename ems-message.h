@@ -6,6 +6,11 @@
 #define EMS_MESSAGE_RECIPIENT_MASTER 0
 #define EMS_MESSAGE_RECIPIENT_ALL    0xffffffff
 
+/* Some (arbitrary) offset for user-defined messages. We need some non-internal messages
+ * to propagate changes ourselves. Keep in mind that we might change this according
+ * to ems-status-messages.h. */
+#define EMS_MESSAGE_USER                   0x00000010
+
 typedef struct {
     uint32_t type;           /* The application-defined message type. */
     uint32_t recipient_id;   /* The identifier of the recipient or (uint32_t)(-1) for all. */
@@ -128,6 +133,12 @@ static inline void ems_message_write_u64(uint8_t *payload, uint32_t offset, uint
     uint32_t vh = (uint32_t)(value >> 32);
     ems_message_write_u32(payload, offset, vl);
     ems_message_write_u32(payload, offset + 4, vh);
+}
+
+/* Write the payload size of the message. */
+static inline void ems_message_write_payload_size(uint8_t *msgbuffer, uint32_t payload_size)
+{
+    ems_message_write_u32(msgbuffer, EMS_MESSAGE_HEADER_SIZE - 4, payload_size);
 }
 
 /* Read a 32 bit value from the payload at a given offset. */

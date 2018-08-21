@@ -93,6 +93,8 @@ void ems_peer_disconnect(EMSPeer *peer)
 void ems_peer_send_message(EMSPeer *peer, EMSMessage *msg)
 {
     EMSList *tmp;
+    if (ems_unlikely(!peer->is_alive))
+        return;
     pthread_mutex_lock(&peer->peer_lock);
     for (tmp = peer->communicators; tmp; tmp = tmp->next) {
         ems_communicator_send_message((EMSCommunicator *)tmp->data, msg);

@@ -364,8 +364,9 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
             break;
         }
 
-        /* peek queue */
-        _ems_communicator_socket_check_outgoing_messages(comm);
+        /* peek queue, only if connected */
+        if (status_flags & _EMS_COMM_SOCKET_ACTION_CONNECTED)
+            _ems_communicator_socket_check_outgoing_messages(comm);
     }
 
     close(comm->epoll_fd);

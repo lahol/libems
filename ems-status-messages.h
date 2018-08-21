@@ -13,8 +13,10 @@ typedef struct {
     EMSPeer *peer;
 } EMSMessageStatusPeerChanged;
 
-/* Some (arbitrary) offset for user-defined messages. We need some non-internal messages
- * to propagate changes ourselves. */
-#define EMS_MESSAGE_USER                   0x00000010
-
-
+/* The peer is connected and ready to work.
+ */
+#define EMS_MESSAGE_STATUS_PEER_READY      0x00000002
+typedef struct {
+    EMSMessage parent;
+    EMSPeer *peer;
+} EMSMessageStatusPeerReady;

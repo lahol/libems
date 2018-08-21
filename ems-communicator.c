@@ -9,6 +9,7 @@
 #include "ems-messages-internal.h"
 #include "ems-communicator-unix.h"
 #include "ems-communicator-inet.h"
+#include "ems-status-messages.h"
 #include <string.h>
 
 /* Create a new communicator of the given type with the given key/value pairs. */
@@ -119,10 +120,19 @@ void ems_communicator_close_connection(EMSCommunicator *comm, uint32_t peer_id)
 
 void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg)
 {
+    EMSMessage *pmsg = NULL;
     switch (msg->type) {
         case __EMS_MESSAGE_SET_ID:
-            if (comm && comm->peer)
+            if (comm && comm->peer) {
                 ems_peer_set_id(comm->peer, ((EMSMessageIntSetId *)msg)->peer_id);
+
+                pmsg = ems_message_new(EMS_MESSAGE_STATUS_PEER_READY,
+                                       comm->peer->id,
+                                       comm->peer->id,
+                                       "peer", comm->peer,
+                                       NULL, NULL);
+                ems_peer_push_message(comm->peer, pmsg);
+            }
             break;
         case __EMS_MESSAGE_LEAVE:
             ems_communicator_close_connection(comm, msg->sender_id);
@@ -141,9 +151,27 @@ void ems_communicator_set_status(EMSCommunicator *comm, EMSCommunicatorStatus st
     if (ems_unlikely(!comm))
         return;
 
+    EMSMessage *msg = NULL;
+
     if (comm->status != status) {
         comm->status = status;
         /* signal status change */
+        switch (status) {
+            case EMS_COMM_STATUS_INITIALIZED:
+                break;
+            case EMS_COMM_STATUS_CONNECTED:
+                if (comm->peer->role == EMS_PEER_ROLE_MASTER) {
+                    msg = ems_message_new(EMS_MESSAGE_STATUS_PEER_READY,
+                                          comm->peer->id,
+                                          comm->peer->id,
+                                          "peer", comm->peer,
+                                          NULL, NULL);
+                    ems_peer_push_message(comm->peer, msg);
+                }
+                break;
+            default:
+                break;
+        }
     }
 }
 

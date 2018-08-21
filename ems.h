@@ -4,6 +4,7 @@
 #include "ems-message.h"
 #include "ems-peer.h"
 #include "ems-status-messages.h"
+#include "ems-memory.h"
 
 /* Setup internal data structures.
  * magic is the 4 byte magic sequence every message starts with.
