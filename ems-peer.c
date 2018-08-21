@@ -153,6 +153,7 @@ void ems_peer_shutdown(EMSPeer *peer)
         /* wait for leave ack? */
     }
 
+    ems_peer_stop_event_loop(peer);
     ems_peer_terminate(peer);
 }
 
