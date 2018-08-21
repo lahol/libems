@@ -137,7 +137,7 @@ void ems_peer_shutdown(EMSPeer *peer)
 
         /* wait for messages until there are no open connectinons anymore */
         while (ems_peer_get_connection_count(peer)) {
-            /* The connection could be decreased after the last call and the signal
+            /* The count could be decreased after the last call and the signal
              * for the message might got lost. Therefore use a timeout. */
             ems_peer_wait_for_message_timeout(peer, 500);
         }

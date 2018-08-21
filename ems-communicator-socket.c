@@ -245,6 +245,16 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
     }
 
     size_t payload_size = 0;
+/*    fprintf(stderr, "[%d] msgheader: "
+                    "%02x %02x %02x %02x %02x %02x %02x %02x "
+                    "%02x %02x %02x %02x %02x %02x %02x %02x "
+                    "%02x %02x %02x %02x\n", getpid(),
+                    buffer[0], buffer[1], buffer[2], buffer[3],
+                    buffer[4], buffer[5], buffer[6], buffer[7],
+                    buffer[8], buffer[9], buffer[10], buffer[11],
+                    buffer[12], buffer[13], buffer[14], buffer[15],
+                    buffer[16], buffer[17], buffer[18], buffer[19]);*/
+
     EMSMessage *msg = ems_message_decode_header(buffer, rc, &payload_size);
     if (!msg)
         return EMS_ERROR_INVALID_ARGUMENT;
