@@ -121,7 +121,9 @@ EMSMessage *_ems_message_queue_pop_head_unsafe(EMSMessageQueue *mq)
         msg = mq->head->data;
         ems_free(mq->head);
         mq->head = tmp;
-        if (!mq->head)
+        if (mq->head)
+            mq->head->prev = NULL;
+        else
             mq->tail = NULL;
         --mq->count;
     }

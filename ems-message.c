@@ -44,7 +44,7 @@ int ems_message_register_type(uint32_t type, EMSMessageClass *msg_class)
     }
     else {
         memset(new_class, 0, sizeof(EMSMessageClass));
-        new_class->size = sizeof(EMSMessageClass);
+        new_class->size = sizeof(EMSMessage);
     }
     new_class->msgtype = type;
 
