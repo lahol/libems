@@ -201,6 +201,8 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
     size_t buflen;
     EMSList *tmp;
 
+    EMSList *err_list = NULL;
+
     while ((msg = ems_message_queue_pop_filtered(&((EMSCommunicator *)comm)->msg_queue_outgoing)) != NULL) {
         buflen = ems_message_encode(msg, &buffer);
         if (msg->recipient_id == EMS_MESSAGE_RECIPIENT_ALL) {
@@ -208,14 +210,23 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
             for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
                 peer = (EMSSocketInfo *)tmp->data;
                 if (peer->type == EMS_SOCKET_TYPE_DATA) {
-                    ems_util_write_full(peer->fd, buffer, buflen);
+                    if (ems_util_write_full(peer->fd, buffer, buflen) < 0)
+                        err_list = ems_list_prepend(err_list, tmp->data);
                 }
+            }
+            /* remove hung up descriptors */
+            while (ems_unlikely(err_list != NULL)) {
+                tmp = err_list->next;
+                ems_communicator_socket_disconnect_peer(comm, (EMSSocketInfo *)err_list->data);
+                ems_free(err_list);
+                err_list = tmp;
             }
         }
         else {
             /* find slave */
             peer = _ems_communicator_socket_get_peer(comm, msg->recipient_id);
-            ems_util_write_full(peer->fd, buffer, buflen);
+            if (ems_util_write_full(peer->fd, buffer, buflen) < 0)
+                ems_communicator_socket_disconnect_peer(comm, peer);
         }
         ems_free(buffer);
         ems_message_free(msg);
