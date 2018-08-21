@@ -220,7 +220,7 @@ EMSMessage *ems_message_queue_pop_matching(EMSMessageQueue *mq, EMSMessageFilter
     }
     else {
         for (tmp = mq->head; tmp; tmp = tmp->next) {
-            if (filter((EMSMessage *)tmp->data, userdata) == 0)
+            if (filter(tmp->data, userdata) == 0)
                 goto found;
         }
         goto done;
