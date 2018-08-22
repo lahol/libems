@@ -24,3 +24,6 @@
 
 /* A required class function was not set */
 #define EMS_ERROR_MISSING_CLASS_FUNCTION                7
+
+/* A member with this name has already been added to the class. */
+#define EMS_ERROR_MEMBER_ALREADY_PRESENT                8

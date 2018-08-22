@@ -51,11 +51,6 @@ typedef struct {
     /* Free the message. If this is NULL, ems_free() is used. */
     void (*msg_free)(EMSMessage *);
 
-    /* Set a value in the message.
-     * msg, key, value
-     */
-    void (*msg_set_value)(EMSMessage *, const char *, const void *);
-
     /* Copy the message. */
     void (*msg_copy)(EMSMessage *, EMSMessage *);
 } EMSMessageClass;
@@ -69,6 +64,43 @@ typedef struct {
  * setting values by key.
  */
 int ems_message_register_type(uint32_t type, EMSMessageClass *msg_class);
+
+/* Available member types
+ */
+typedef enum {
+    EMS_MSG_MEMBER_UNKNOWN = 0,
+    EMS_MSG_MEMBER_UINT,
+    EMS_MSG_MEMBER_INT,
+    EMS_MSG_MEMBER_UINT64,
+    EMS_MSG_MEMBER_INT64,
+    EMS_MSG_MEMBER_DOUBLE,
+    EMS_MSG_MEMBER_POINTER,
+    EMS_MSG_MEMBER_STRING,
+    EMS_MSG_MEMBER_CUSTOM
+} EMSMessageMemberType;
+
+/* Callback to set a member of a message.
+ * EMSMessage *: pointer to the message
+ * uint32_t:     identifier given during registration
+ * void *:       a pointer to the member to be set
+ * void *:       a pointer to the value given
+ */
+typedef int (*EMSMessageClassSetMemberCallback)(EMSMessage *, uint32_t, void *, void *);
+
+/* Add a member to the class.
+ * msgtype:       The type of the message class this member is added to.
+ * member_type:   The type of the member.
+ * member_id:     User-defined identifier. This may be useful for callbacks.
+ * member_name:   Unique name of the member.
+ * member_offset: The offset of the member in the corresponding struct, as determined by offsetof().
+ * member_set_cb: If not NULL, use this callback to set the value.
+ */
+int ems_message_type_add_member(uint32_t msgtype,
+                                EMSMessageMemberType member_type,
+                                uint32_t member_id,
+                                const char *member_name,
+                                size_t member_offset,
+                                EMSMessageClassSetMemberCallback member_set_cb);
 
 /* Clear the classes list. */
 void ems_message_types_clear(void);
@@ -87,8 +119,10 @@ int ems_message_copy(EMSMessage *dst, EMSMessage *src);
 /* Duplicate a message. */
 EMSMessage *ems_message_dup(EMSMessage *msg);
 
+#if 0
 /* Set a value given by some key. */
 void ems_message_set_value(EMSMessage *msg, const char *key, const void *value);
+#endif
 
 /* Encode a message. This calls the function from the class or writes only the generic part. */
 size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer);

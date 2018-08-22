@@ -5,6 +5,7 @@
 #include "ems-memory.h"
 #include "ems-error.h"
 #include <string.h>
+#include <stddef.h>
 
 /* __EMS_MESSAGE_SET_ID */
 size_t _ems_message_int_set_id_encode(EMSMessage *msg, uint8_t **buffer, size_t buflen)
@@ -28,13 +29,6 @@ void _ems_message_int_set_id_decode(EMSMessage *msg, uint8_t *payload, size_t bu
     }
 
     ((EMSMessageIntSetId *)msg)->peer_id = ems_message_read_u32(payload, 0);
-}
-
-void _ems_message_int_set_id_set_value(EMSMessage *msg, const char *key, const void *value)
-{
-    if (!strcmp(key, "peer-id")) {
-        ((EMSMessageIntSetId *)msg)->peer_id = EMS_UTIL_POINTER_TO_INT(value);
-    }
 }
 
 void _ems_message_int_set_id_copy(EMSMessage *dst, EMSMessage *src)
@@ -71,13 +65,6 @@ void _ems_messages_status_peer_changed_copy(EMSMessage *dst, EMSMessage *src)
 }
 
 /* EMS_MESSAGE_STATUS_PEER_READY */
-void _ems_messages_status_peer_ready_set_value(EMSMessage *msg, const char *key, const void *value)
-{
-    if (!strcmp(key, "peer")) {
-        ((EMSMessageStatusPeerReady *)msg)->peer = (EMSPeer *)value;
-    }
-}
-
 void _ems_messages_status_peer_ready_copy(EMSMessage *dst, EMSMessage *src)
 {
     ((EMSMessageStatusPeerReady *)dst)->peer = ((EMSMessageStatusPeerReady *)src)->peer;
@@ -96,11 +83,17 @@ int ems_messages_register_internal_types(void)
     msgclass.min_payload   = 4;
     msgclass.msg_encode    = _ems_message_int_set_id_encode;
     msgclass.msg_decode    = _ems_message_int_set_id_decode;
-    msgclass.msg_set_value = _ems_message_int_set_id_set_value;
     msgclass.msg_copy      = _ems_message_int_set_id_copy;
 
     if ((rc = ems_message_register_type(__EMS_MESSAGE_SET_ID, &msgclass)) != EMS_OK)
         return rc;
+
+    ems_message_type_add_member(__EMS_MESSAGE_SET_ID,
+                                EMS_MSG_MEMBER_UINT,
+                                0,
+                                "peer-id",
+                                offsetof(EMSMessageIntSetId, peer_id),
+                                NULL);
 
     /* __EMS_MESSAGE_LEAVE */
     memset(&msgclass, 0, sizeof(EMSMessageClass));
@@ -146,21 +139,33 @@ int ems_messages_register_internal_types(void)
     memset(&msgclass, 0, sizeof(EMSMessageClass));
     msgclass.msgtype       = EMS_MESSAGE_STATUS_PEER_CHANGED;
     msgclass.size          = sizeof(EMSMessageStatusPeerChanged);
-    msgclass.msg_set_value = _ems_messages_status_peer_changed_set_value;
     msgclass.msg_copy      = _ems_messages_status_peer_changed_copy;
 
     if ((rc = ems_message_register_type(EMS_MESSAGE_STATUS_PEER_CHANGED, &msgclass)) != EMS_OK)
         return rc;
 
+    ems_message_type_add_member(EMS_MESSAGE_STATUS_PEER_CHANGED,
+                                EMS_MSG_MEMBER_UINT,
+                                0,
+                                "peer",
+                                offsetof(EMSMessageStatusPeerChanged, peer),
+                                NULL);
+
     /* EMS_MESSAGE_STATUS_PEER_READY */
     memset(&msgclass, 0, sizeof(EMSMessageClass));
     msgclass.msgtype       = EMS_MESSAGE_STATUS_PEER_READY;
     msgclass.size          = sizeof(EMSMessageStatusPeerReady);
-    msgclass.msg_set_value = _ems_messages_status_peer_ready_set_value;
     msgclass.msg_copy      = _ems_messages_status_peer_ready_copy;
 
     if ((rc = ems_message_register_type(EMS_MESSAGE_STATUS_PEER_READY, &msgclass)) != EMS_OK)
         return rc;
+
+    ems_message_type_add_member(EMS_MESSAGE_STATUS_PEER_READY,
+                                EMS_MSG_MEMBER_UINT,
+                                0,
+                                "peer",
+                                offsetof(EMSMessageStatusPeerReady, peer),
+                                NULL);
 
     return EMS_OK;
 }

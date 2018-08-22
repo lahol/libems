@@ -16,7 +16,6 @@ void test_register_messages(void)
     cls.msg_encode = NULL;
     cls.msg_decode = NULL;
     cls.msg_free = NULL;
-    cls.msg_set_value = NULL;
     cls.msg_copy = NULL;
 
     ems_message_register_type(EMS_TEST_MESSAGE_QUIT, &cls);
@@ -116,6 +115,10 @@ void handle_peer_message(EMSPeer *peer, EMSMessage *msg, void *userdata)
             peer->role == EMS_PEER_ROLE_MASTER ? "MASTER" : "SLAVE",
             msg->type,
             ems_peer_get_id(peer));
+
+    if (msg->type == EMS_MESSAGE_STATUS_PEER_READY) {
+        fprintf(stderr, "%d peer ready: %p vs. %p\n", getpid(), ((EMSMessageStatusPeerReady *)msg)->peer, peer);
+    }
 }
 
 int main(int argc, char **argv)

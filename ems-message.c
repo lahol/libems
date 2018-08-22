@@ -4,6 +4,20 @@
 #include "ems-error.h"
 #include <memory.h>
 #include <stdarg.h>
+#include <stdio.h>
+
+typedef struct {
+    EMSMessageMemberType type;
+    uint32_t id;
+    char     *name;
+    size_t   offset;
+    EMSMessageClassSetMemberCallback set_cb;
+} EMSMessageClassMember;
+
+typedef struct {
+    EMSMessageClass klass;
+    EMSList *members;        /* [EMSMessageClassMember] */
+} EMSMessageClassInternal;
 
 /* FIXME: Use a better data structure here. For the moment, a list should suffice,
  * but we could think about some form of tree, possibly arranged in such a way that
@@ -15,12 +29,12 @@ EMSList *msg_classes = NULL;
 char msg_magic[] = "EMSG";
 
 static inline
-EMSMessageClass *_ems_message_type_get_class(uint32_t type)
+EMSMessageClassInternal *_ems_message_type_get_class(uint32_t type)
 {
     EMSList *tmp;
     for (tmp = msg_classes; tmp; tmp = tmp->next) {
         if (((EMSMessageClass *)tmp->data)->msgtype == type)
-            return (EMSMessageClass *)tmp->data;
+            return (EMSMessageClassInternal *)tmp->data;
     }
     return NULL;
 }
@@ -38,24 +52,73 @@ int ems_message_register_type(uint32_t type, EMSMessageClass *msg_class)
     if (_ems_message_type_get_class(type))
         return EMS_ERROR_MESSAGE_TYPE_EXISTS;
 
-    EMSMessageClass *new_class = ems_alloc(sizeof(EMSMessageClass));
+    EMSMessageClassInternal *new_class = ems_alloc(sizeof(EMSMessageClassInternal));
     if (msg_class) {
-        *new_class = *msg_class;
+        *((EMSMessageClass *)new_class) = *msg_class;
+        new_class->members = NULL;
     }
     else {
         memset(new_class, 0, sizeof(EMSMessageClass));
-        new_class->size = sizeof(EMSMessage);
+        new_class->klass.size = sizeof(EMSMessage);
     }
-    new_class->msgtype = type;
+    new_class->klass.msgtype = type;
 
     msg_classes = ems_list_prepend(msg_classes, new_class);
 
     return EMS_OK;
 }
 
+int ems_message_type_add_member(uint32_t msgtype,
+                                EMSMessageMemberType member_type,
+                                uint32_t member_id,
+                                const char *member_name,
+                                size_t member_offset,
+                                EMSMessageClassSetMemberCallback member_set_cb)
+{
+    EMSList *tmp;
+    EMSMessageClassMember *member;
+    if (!member_name)
+        return EMS_ERROR_INVALID_ARGUMENT;
+
+    EMSMessageClassInternal *cls = _ems_message_type_get_class(msgtype);
+    if (!cls)
+        return EMS_ERROR_INVALID_ARGUMENT;
+
+    for (tmp = cls->members; tmp; tmp = tmp->next) {
+        if (!strcmp(((EMSMessageClassMember *)tmp->data)->name, member_name))
+            return EMS_ERROR_MEMBER_ALREADY_PRESENT;
+    }
+
+    member = ems_alloc(sizeof(EMSMessageClassMember));
+    member->type   = member_type;
+    member->id     = member_id;
+    member->offset = member_offset;
+    member->set_cb = member_set_cb;
+    member->name   = strdup(member_name);
+
+    cls->members = ems_list_prepend(cls->members, member);
+
+    return EMS_OK;
+}
+
+EMSMessageClassMember *_ems_message_type_get_member(EMSMessageClassInternal *cls, const char *member_name)
+{
+    EMSList *tmp;
+    for (tmp = cls->members; tmp; tmp = tmp->next) {
+        if (!strcmp(((EMSMessageClassMember *)tmp->data)->name, member_name))
+            return (EMSMessageClassMember *)tmp->data;
+    }
+    return NULL;
+}
+
+void _ems_message_class_internal_free(EMSMessageClassInternal *msgclass)
+{
+    ems_list_free_full(msgclass->members, (EMSDestroyNotifyFunc)ems_free);
+}
+
 void ems_message_types_clear(void)
 {
-    ems_list_free_full(msg_classes, (EMSDestroyNotifyFunc)ems_free);
+    ems_list_free_full(msg_classes, (EMSDestroyNotifyFunc)_ems_message_class_internal_free);
     msg_classes = NULL;
 }
 
@@ -69,11 +132,11 @@ void ems_messages_set_magic(char *magic)
  */
 EMSMessage *ems_message_new(uint32_t type, uint32_t recipient_id, uint32_t sender_id, ...)
 {
-    EMSMessageClass *cls = _ems_message_type_get_class(type);
+    EMSMessageClassInternal *cls = _ems_message_type_get_class(type);
     if (ems_unlikely(!cls))
         return NULL;
 
-    EMSMessage *msg = ems_alloc(cls->size);
+    EMSMessage *msg = ems_alloc(cls->klass.size);
     msg->type = type;
     msg->recipient_id = recipient_id;
     msg->sender_id = sender_id;
@@ -82,13 +145,48 @@ EMSMessage *ems_message_new(uint32_t type, uint32_t recipient_id, uint32_t sende
     va_start(args, sender_id);
 
     char *key;
-    void *val;
+    EMSMessageClassMember *member;
 
-    if (cls->msg_set_value) {
-        while ((key = va_arg(args, char *)) != NULL) {
-            val = va_arg(args, void *);
-
-            cls->msg_set_value(msg, key, val);
+    while ((key = va_arg(args, char *)) != NULL) {
+        member =  _ems_message_type_get_member(cls, key);
+        if (ems_unlikely(!member)) {
+            fprintf(stderr, "Message has no member with the name `%s'\n", key);
+            (void)va_arg(args, void *);
+        }
+        else if (member->set_cb) {
+            member->set_cb(msg,
+                           member->id,
+                           (void *)(((void *)msg) + member->offset),
+                           va_arg(args, void *));
+        }
+        else {
+            switch (member->type) {
+                case EMS_MSG_MEMBER_INT:
+                    *((int *)(((void *)msg) + member->offset)) = va_arg(args, int);
+                    break;
+                case EMS_MSG_MEMBER_INT64:
+                    *((int64_t *)(((void *)msg) + member->offset)) = va_arg(args, int64_t);
+                    break;
+                case EMS_MSG_MEMBER_UINT:
+                    *((uint32_t *)(((void *)msg) + member->offset)) = va_arg(args, uint32_t);
+                    break;
+                case EMS_MSG_MEMBER_UINT64:
+                    *((uint64_t *)(((void *)msg) + member->offset)) = va_arg(args, uint64_t);
+                    break;
+                case EMS_MSG_MEMBER_DOUBLE:
+                    *((double *)(((void *)msg) + member->offset)) = va_arg(args, double);
+                    break;
+                case EMS_MSG_MEMBER_POINTER:
+                    *((void **)(((void *)msg) + member->offset)) = va_arg(args, void *);
+                    break;
+                case EMS_MSG_MEMBER_STRING:
+                    strcpy((char *)(((void *)msg) + member->offset), va_arg(args, char *));
+                    break;
+                default:
+                    fprintf(stderr, "Unable to set value of type %d in member `%s'\n", member->type, key);
+                    (void)va_arg(args, void *);
+                    break;
+            }
         }
     }
 
@@ -97,6 +195,7 @@ EMSMessage *ems_message_new(uint32_t type, uint32_t recipient_id, uint32_t sende
     return msg;
 }
 
+#if 0
 /* Set a value given by some key. */
 void ems_message_set_value(EMSMessage *msg, const char *key, const void *value)
 {
@@ -118,17 +217,18 @@ void ems_message_set_value(EMSMessage *msg, const char *key, const void *value)
         cls->msg_set_value(msg, key, value);
     }
 }
+#endif
 
 /* Encode a message. This calls the function from the class or writes only the generic part. */
 size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer)
 {
     if (!msg)
         return 0;
-    EMSMessageClass *cls = _ems_message_type_get_class(msg->type);
+    EMSMessageClassInternal *cls = _ems_message_type_get_class(msg->type);
     if (ems_unlikely(!cls))
         return 0;
 
-    size_t buflen = EMS_MESSAGE_HEADER_SIZE + cls->min_payload;
+    size_t buflen = EMS_MESSAGE_HEADER_SIZE + cls->klass.min_payload;
     *buffer = ems_alloc(buflen);
 
     strncpy((char *)(*buffer), msg_magic, 4);
@@ -137,8 +237,8 @@ size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer)
     ems_message_write_u32(*buffer, 12, msg->sender_id);
     ems_message_write_u32(*buffer, 16, 0);
 
-    if (cls->msg_encode)
-        return cls->msg_encode(msg, buffer, buflen);
+    if (cls->klass.msg_encode)
+        return cls->klass.msg_encode(msg, buffer, buflen);
 
     return buflen;
 }
@@ -146,10 +246,10 @@ size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer)
 /* Decode a message. */
 void ems_message_decode_payload(EMSMessage *msg, uint8_t *payload, size_t payload_size)
 {
-    EMSMessageClass *cls = _ems_message_type_get_class(msg->type);
+    EMSMessageClassInternal *cls = _ems_message_type_get_class(msg->type);
 
-    if (cls->msg_decode)
-        cls->msg_decode(msg, payload, payload_size);
+    if (cls->klass.msg_decode)
+        cls->klass.msg_decode(msg, payload, payload_size);
 }
 
 EMSMessage *ems_message_decode_header(uint8_t *buffer, size_t buflen, size_t *payload_size)
@@ -161,11 +261,11 @@ EMSMessage *ems_message_decode_header(uint8_t *buffer, size_t buflen, size_t *pa
         return NULL;
 
     uint32_t type = ems_message_read_u32(buffer, 4);
-    EMSMessageClass *cls = _ems_message_type_get_class(type);
+    EMSMessageClassInternal *cls = _ems_message_type_get_class(type);
     if (ems_unlikely(!cls))
         return NULL;
 
-    EMSMessage *msg = ems_alloc(cls->size);
+    EMSMessage *msg = ems_alloc(cls->klass.size);
     msg->type = type;
     msg->recipient_id = ems_message_read_u32(buffer, 8);
     msg->sender_id = ems_message_read_u32(buffer, 12);
@@ -179,11 +279,11 @@ EMSMessage *ems_message_decode_header(uint8_t *buffer, size_t buflen, size_t *pa
 /* Free a message. */
 void ems_message_free(EMSMessage *msg)
 {
-    EMSMessageClass *cls;
+    EMSMessageClassInternal *cls;
     if (msg) {
         cls = _ems_message_type_get_class(msg->type);
-        if (cls && cls->msg_free)
-            cls->msg_free(msg);
+        if (cls && cls->klass.msg_free)
+            cls->klass.msg_free(msg);
         else
             ems_free(msg);
     }
@@ -198,9 +298,9 @@ int ems_message_copy(EMSMessage *dst, EMSMessage *src)
     dst->recipient_id = src->recipient_id;
     dst->sender_id = src->sender_id;
 
-    EMSMessageClass *cls = _ems_message_type_get_class(src->type);
-    if (cls && cls->msg_copy)
-        cls->msg_copy(dst, src);
+    EMSMessageClassInternal *cls = _ems_message_type_get_class(src->type);
+    if (cls && cls->klass.msg_copy)
+        cls->klass.msg_copy(dst, src);
 
     return EMS_OK;
 }
@@ -211,11 +311,11 @@ EMSMessage *ems_message_dup(EMSMessage *msg)
     if (ems_unlikely(!msg))
         return NULL;
 
-    EMSMessageClass *cls = _ems_message_type_get_class(msg->type);
+    EMSMessageClassInternal *cls = _ems_message_type_get_class(msg->type);
     if (ems_unlikely(!cls))
         return NULL;
 
-    EMSMessage *new_msg = ems_alloc(cls->size);
+    EMSMessage *new_msg = ems_alloc(cls->klass.size);
     new_msg->type = msg->type;
 
     ems_message_copy(new_msg, msg);
