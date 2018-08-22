@@ -23,6 +23,10 @@ void ems_free(void *ptr)
 
 void *ems_realloc(void *ptr, size_t size)
 {
+    if (!size) {
+        ems_free(ptr);
+        return NULL;
+    }
     ptr = memhandler.realloc(ptr, size);
     if (!ptr && size)
         exit(1);
