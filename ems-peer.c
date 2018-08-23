@@ -4,6 +4,10 @@
 #include "ems-messages-internal.h"
 #include "ems-status-messages.h"
 
+#ifdef DEBUG
+#include <stdio.h>
+#endif
+
 void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
 void *ems_peer_check_messages(EMSPeer *peer);
 
@@ -216,7 +220,8 @@ void ems_peer_signal_new_message(EMSPeer *peer)
 void ems_peer_wait_for_message(EMSPeer *peer)
 {
     pthread_mutex_lock(&peer->msg_available_lock);
-    pthread_cond_wait(&peer->msg_available_cond, &peer->msg_available_lock);
+    if (!ems_message_queue_peek_head(&peer->msgqueue))
+        pthread_cond_wait(&peer->msg_available_cond, &peer->msg_available_lock);
     pthread_mutex_unlock(&peer->msg_available_lock);
 }
 
@@ -271,12 +276,18 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
         case __EMS_MESSAGE_CONNECTION_ADD:
             pthread_mutex_lock(&peer->peer_lock);
             ++peer->connection_count;
+#ifdef DEBUG
+            fprintf(stderr, "[%d] connection ADD\n", getpid());
+#endif
             pthread_mutex_unlock(&peer->peer_lock);
             _ems_peer_signal_change(peer);
             break;
         case __EMS_MESSAGE_CONNECTION_DEL:
             pthread_mutex_lock(&peer->peer_lock);
             --peer->connection_count;
+#ifdef DEBUG
+            fprintf(stderr, "[%d] connection DEL\n", getpid());
+#endif
             pthread_mutex_unlock(&peer->peer_lock);
             _ems_peer_signal_change(peer);
             break;
