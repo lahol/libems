@@ -228,9 +228,9 @@ void ems_peer_wait_for_message_timeout(EMSPeer *peer, uint32_t timeout_ms)
 
     timeout.tv_sec += timeout_ms / 1000;
     timeout.tv_nsec += (timeout_ms % 1000) * 1e6;
-    if (timeout.tv_nsec >= 1e6) {
+    if (timeout.tv_nsec >= 1e9) {
         ++timeout.tv_sec;
-        timeout.tv_nsec -= 1e6;
+        timeout.tv_nsec -= 1e9;
     }
 
     pthread_mutex_lock(&peer->msg_available_lock);
