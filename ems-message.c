@@ -136,7 +136,7 @@ EMSMessage *ems_message_new(uint32_t type, uint32_t recipient_id, uint32_t sende
     if (ems_unlikely(!cls))
         return NULL;
 
-    EMSMessage *msg = ems_alloc(cls->klass.size);
+    EMSMessage *msg = ems_alloc0(cls->klass.size);
     msg->type = type;
     msg->recipient_id = recipient_id;
     msg->sender_id = sender_id;
@@ -315,7 +315,7 @@ EMSMessage *ems_message_dup(EMSMessage *msg)
     if (ems_unlikely(!cls))
         return NULL;
 
-    EMSMessage *new_msg = ems_alloc(cls->klass.size);
+    EMSMessage *new_msg = ems_alloc0(cls->klass.size);
     new_msg->type = msg->type;
 
     ems_message_copy(new_msg, msg);

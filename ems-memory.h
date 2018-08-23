@@ -5,6 +5,7 @@
 
 /* These are wrappers to allow other alloc/free functions. */
 void *ems_alloc(size_t size);
+void *ems_alloc0(size_t size);
 void ems_free(void *ptr);
 void *ems_realloc(void *ptr, size_t size);
 

@@ -1,5 +1,6 @@
 #include "ems-memory.h"
 #include <stdlib.h>
+#include <memory.h>
 
 static EMSMemoryHandler memhandler = {
     .alloc   = malloc,
@@ -12,6 +13,14 @@ void *ems_alloc(size_t size)
     void *ptr = memhandler.alloc(size);
     if (!ptr && size)
         exit(1);
+    return ptr;
+}
+
+void *ems_alloc0(size_t size)
+{
+    void *ptr = ems_alloc(size);
+    if (ptr && size)
+        memset(ptr, 0, size);
     return ptr;
 }
 
