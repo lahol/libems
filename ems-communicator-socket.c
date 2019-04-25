@@ -15,6 +15,10 @@
 
 #include <stropts.h>
 
+#ifdef DEBUG
+#include <stdio.h>
+#endif
+
 typedef enum {
     _EMS_COMM_SOCKET_ACTION_CONNECTED  = (1<<0),  /* The socket is connected */
     _EMS_COMM_SOCKET_ACTION_CONNECTING = (1<<1),  /* The socket is about to be connected, but may have failed */
@@ -200,6 +204,7 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
     uint8_t *buffer = NULL;
     size_t buflen;
     EMSList *tmp;
+    ssize_t rc;
 
     EMSList *err_list = NULL;
 
@@ -209,14 +214,24 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
             /* send to all */
             for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
                 peer = (EMSSocketInfo *)tmp->data;
+#ifdef DEBUG
+                fprintf(stderr, "[%d] Send message 0x%08x to %u\n", getpid(), msg->type, peer->id);
+#endif
                 if (peer->type == EMS_SOCKET_TYPE_DATA) {
-                    if (ems_util_write_full(peer->fd, buffer, buflen) < 0)
+                    if ((rc = ems_util_write_full(peer->fd, buffer, buflen)) <= 0) {
+#ifdef DEBUG
+                        fprintf(stderr, "[%d] write to %d returned %ld\n", getpid(), peer->id, rc);
+#endif
                         err_list = ems_list_prepend(err_list, tmp->data);
+                    }
                 }
             }
             /* remove hung up descriptors */
             while (ems_unlikely(err_list != NULL)) {
                 tmp = err_list->next;
+#ifdef DEBUG
+                fprintf(stderr, "[%d] There have been descriptor errors: id=%u\n", getpid(), ((EMSSocketInfo *)err_list->data)->id);
+#endif
                 ems_communicator_socket_disconnect_peer(comm, (EMSSocketInfo *)err_list->data);
                 ems_free(err_list);
                 err_list = tmp;
@@ -233,6 +248,11 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
     }
 }
 
+void ems_communicator_socket_flush_outgoing_messages(EMSCommunicatorSocket *comm)
+{
+    _ems_communicator_socket_check_outgoing_messages(comm);
+}
+
 /* Read an incoming message, decode it and push it to the message queue of the peer. */
 int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, EMSSocketInfo *sock_info)
 {
@@ -240,6 +260,9 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
 
     ssize_t rc;
     if ((rc = ems_util_read_full(sock_info->fd, buffer, EMS_MESSAGE_HEADER_SIZE)) <= 0) {
+#ifdef DEBUG
+        fprintf(stderr, "[%d] read_full returned %ld\n", getpid(), rc);
+#endif
         ems_free(buffer);
         return EMS_ERROR_INVALID_SOCKET;
     }
@@ -264,6 +287,9 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
         buffer = ems_alloc(payload_size);
 
         if ((rc = ems_util_read_full(sock_info->fd, buffer, payload_size)) <= 0) {
+#ifdef DEBUG
+            fprintf(stderr, "[%d] read_full returned %ld\n", getpid(), rc);
+#endif
             ems_message_free(msg);
             ems_free(buffer);
             return EMS_ERROR_INVALID_SOCKET;
@@ -339,9 +365,12 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
                     }
                     break;
                 case EMS_SOCKET_TYPE_DATA:
-                    /* read messages */
+                   /* read messages */
                     if (incoming[j].events & (EPOLLERR | EPOLLHUP)) {
-                        ems_communicator_socket_disconnect_peer(comm, sock_info);
+#ifdef DEBUG
+                        fprintf(stderr, "[%d] data available, events: 0x%02x\n", getpid(), incoming[j].events);
+#endif
+                         ems_communicator_socket_disconnect_peer(comm, sock_info);
                         /* FIXME: if we got no bye message and we are a slave, try to reconnect */
                     }
                     else if (incoming[j].events & EPOLLIN) {
@@ -365,14 +394,21 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
          * to 100 ms to try again later.
          */
         if (status_flags & _EMS_COMM_SOCKET_ACTION_CONNECTING) {
+#ifdef DEBUG
+            fprintf(stderr, "[%d] try connecting\n", getpid());
+#endif
             if ((rc = ems_communicator_socket_try_connect(comm)) == EMS_OK) {
                 status_flags &= ~_EMS_COMM_SOCKET_ACTION_CONNECTING;
                 status_flags |= _EMS_COMM_SOCKET_ACTION_CONNECTED;
                 ems_communicator_set_status((EMSCommunicator *)comm, EMS_COMM_STATUS_CONNECTED);
                 epoll_timeout = -1;
             }
-            else
+            else {
+#ifdef DEBUG
+                fprintf(stderr, "[%d] try connecting returned %d\n", getpid(), rc);
+#endif
                 epoll_timeout = 100;
+            }
         }
         else if (status_flags & _EMS_COMM_SOCKET_ACTION_DISCONNECT) {
             ems_communicator_socket_disconnect_peers(comm);
@@ -402,6 +438,7 @@ int ems_communicator_socket_init(EMSCommunicatorSocket *comm)
     c->disconnect   = (EMSCommunicatorDisconnect)ems_communicator_socket_disconnect;
     c->send_message = (EMSCommunicatorSendMessage)ems_communicator_socket_send_message;
     c->close_connection = (EMSCommunicatorCloseConnection)ems_communicator_socket_close_connection;
+    c->flush_outgoing = (EMSCommunicatorFlushOutgoingMessages)ems_communicator_socket_flush_outgoing_messages;
 
     if (pipe(comm->control_pipe) != 0) {
         fprintf(stderr, "EMSCommunicatorSocket: Could not set up control pipe.\n");

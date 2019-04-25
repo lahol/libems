@@ -157,8 +157,22 @@ void ems_peer_shutdown(EMSPeer *peer)
         /* wait for leave ack? */
     }
 
+    ems_peer_flush_outgoing_messages(peer);
+
     ems_peer_stop_event_loop(peer);
     ems_peer_terminate(peer);
+}
+
+void ems_peer_flush_outgoing_messages(EMSPeer *peer)
+{
+    EMSList *tmp;
+    if (ems_unlikely(!peer->is_alive))
+        return;
+    pthread_mutex_lock(&peer->peer_lock);
+    for (tmp = peer->communicators; tmp; tmp = tmp->next) {
+        ems_communicator_flush_outgoing_messages((EMSCommunicator *)tmp->data);
+    }
+    pthread_mutex_unlock(&peer->peer_lock);
 }
 
 uint32_t ems_peer_get_connection_count(EMSPeer *peer)
@@ -299,6 +313,11 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
                                                     NULL, NULL);
                 ems_peer_send_message(peer, reply);
                 ems_message_free(reply);
+
+#ifdef DEBUG
+                fprintf(stderr, "[%d] received TERM, flushing outgoing messages\n", getpid());
+#endif
+                ems_peer_flush_outgoing_messages(peer);
 
                 ems_peer_terminate(peer);
             }

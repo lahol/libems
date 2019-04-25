@@ -99,6 +99,9 @@ void ems_peer_send_message(EMSPeer *peer, EMSMessage *msg);
  */
 void ems_peer_shutdown(EMSPeer *peer);
 
+/* Flush outgoing messages on all communicators. */
+void ems_peer_flush_outgoing_messages(EMSPeer *peer);
+
 /* Get the number of open connections of this peer. */
 uint32_t ems_peer_get_connection_count(EMSPeer *peer);
 

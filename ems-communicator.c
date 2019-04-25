@@ -118,6 +118,12 @@ void ems_communicator_close_connection(EMSCommunicator *comm, uint32_t peer_id)
         comm->close_connection(comm, peer_id);
 }
 
+void ems_communicator_flush_outgoing_messages(EMSCommunicator *comm)
+{
+    if (comm && comm->flush_outgoing)
+        comm->flush_outgoing(comm);
+}
+
 void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg)
 {
     EMSMessage *pmsg = NULL;
