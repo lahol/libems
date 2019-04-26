@@ -179,8 +179,22 @@ EMSMessage *ems_message_new(uint32_t type, uint32_t recipient_id, uint32_t sende
                 case EMS_MSG_MEMBER_POINTER:
                     *((void **)(((void *)msg) + member->offset)) = va_arg(args, void *);
                     break;
-                case EMS_MSG_MEMBER_STRING:
+                case EMS_MSG_MEMBER_FIXED_STRING:
                     strcpy((char *)(((void *)msg) + member->offset), va_arg(args, char *));
+                    break;
+                case EMS_MSG_MEMBER_STRING:
+                    {
+                        char *value = va_arg(args, char *);
+                        size_t len = value ? strlen(value) : 0;
+                                                ems_free(*(char **)(((void *)msg) + member->offset));
+
+                        *((char **)(((void *)msg) + member->offset)) = ems_alloc(len + 1);
+
+                        if (value)
+                            strncpy(*(char **)(((void *)msg) + member->offset), value, len + 1);
+                        else
+                            (*((char **)(((void *)msg) + member->offset)))[0] = 0;
+                    }
                     break;
                 default:
                     fprintf(stderr, "Unable to set value of type %d in member `%s'\n", member->type, key);
