@@ -200,12 +200,14 @@ void ems_communicator_add_connection(EMSCommunicator *comm)
     ems_peer_push_message(comm->peer, msg);
 }
 
-void ems_communicator_remove_connection(EMSCommunicator *comm)
+void ems_communicator_remove_connection(EMSCommunicator *comm, uint32_t remote_id)
 {
     if (ems_unlikely(!comm))
         return;
 
     --comm->open_connection_count;
-    EMSMessage *msg = ems_message_new(__EMS_MESSAGE_CONNECTION_DEL, comm->peer_id, comm->peer_id, NULL, NULL);
+    EMSMessage *msg = ems_message_new(__EMS_MESSAGE_CONNECTION_DEL, comm->peer_id, comm->peer_id,
+                                      "remote-id", remote_id,
+                                      NULL, NULL);
     ems_peer_push_message(comm->peer, msg);
 }

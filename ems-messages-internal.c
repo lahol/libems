@@ -49,7 +49,32 @@ void _ems_message_int_set_id_copy(EMSMessage *dst, EMSMessage *src)
 /* nothing to do here */
 
 /* __EMS_MESSAGE_CONNECTION_DEL */
-/* nothing to do here */
+size_t _ems_message_int_connection_del_encode(EMSMessage *msg, uint8_t **buffer, size_t buflen)
+{
+    if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 4))
+        *buffer = ems_realloc(*buffer, EMS_MESSAGE_HEADER_SIZE + 4);
+
+    ems_message_write_payload_size(*buffer, 4);
+
+    ems_message_write_u32(*buffer, EMS_MESSAGE_HEADER_SIZE, ((EMSMessageIntConnectionDel *)msg)->remote_id);
+
+    return EMS_MESSAGE_HEADER_SIZE + 4;
+}
+
+void _ems_message_int_connection_del_decode(EMSMessage *msg, uint8_t *payload, size_t buflen)
+{
+    if (ems_unlikely(buflen < 4)) {
+        ((EMSMessageIntConnectionDel *)msg)->remote_id = 0;
+        return;
+    }
+
+    ((EMSMessageIntConnectionDel *)msg)->remote_id = ems_message_read_u32(payload, 0);
+}
+
+void _ems_message_int_connection_del_copy(EMSMessage *dst, EMSMessage *src)
+{
+    ((EMSMessageIntConnectionDel *)dst)->remote_id = ((EMSMessageIntConnectionDel *)src)->remote_id;
+}
 
 /* EMS_MESSAGE_STATUS_PEER_CHANGED */
 void _ems_messages_status_peer_changed_set_value(EMSMessage *msg, const char *key, const void *value)
@@ -62,6 +87,8 @@ void _ems_messages_status_peer_changed_set_value(EMSMessage *msg, const char *ke
 void _ems_messages_status_peer_changed_copy(EMSMessage *dst, EMSMessage *src)
 {
     ((EMSMessageStatusPeerChanged *)dst)->peer = ((EMSMessageStatusPeerChanged *)src)->peer;
+    ((EMSMessageStatusPeerChanged *)dst)->peer_status = ((EMSMessageStatusPeerChanged *)src)->peer_status;
+    ((EMSMessageStatusPeerChanged *)dst)->remote_id = ((EMSMessageStatusPeerChanged *)src)->remote_id;
 }
 
 /* EMS_MESSAGE_STATUS_PEER_READY */
@@ -131,9 +158,20 @@ int ems_messages_register_internal_types(void)
     memset(&msgclass, 0, sizeof(EMSMessageClass));
     msgclass.msgtype       = __EMS_MESSAGE_CONNECTION_DEL;
     msgclass.size          = sizeof(EMSMessageIntConnectionDel);
+    msgclass.min_payload   = 4;
+    msgclass.msg_encode    = _ems_message_int_connection_del_encode;
+    msgclass.msg_decode    = _ems_message_int_connection_del_decode;
+    msgclass.msg_copy      = _ems_message_int_connection_del_copy;
 
     if ((rc = ems_message_register_type(__EMS_MESSAGE_CONNECTION_DEL, &msgclass)) != EMS_OK)
         return rc;
+
+    ems_message_type_add_member(__EMS_MESSAGE_CONNECTION_DEL,
+                                EMS_MSG_MEMBER_UINT,
+                                0,
+                                "remote-id",
+                                offsetof(EMSMessageIntConnectionDel, remote_id),
+                                NULL);
 
     /* EMS_MESSAGE_STATUS_PEER_CHANGED */
     memset(&msgclass, 0, sizeof(EMSMessageClass));
@@ -149,6 +187,18 @@ int ems_messages_register_internal_types(void)
                                 0,
                                 "peer",
                                 offsetof(EMSMessageStatusPeerChanged, peer),
+                                NULL);
+    ems_message_type_add_member(EMS_MESSAGE_STATUS_PEER_CHANGED,
+                                EMS_MSG_MEMBER_UINT,
+                                1,
+                                "peer-status",
+                                offsetof(EMSMessageStatusPeerChanged, peer_status),
+                                NULL);
+    ems_message_type_add_member(EMS_MESSAGE_STATUS_PEER_CHANGED,
+                                EMS_MSG_MEMBER_UINT,
+                                2,
+                                "remote-id",
+                                offsetof(EMSMessageStatusPeerChanged, remote_id),
                                 NULL);
 
     /* EMS_MESSAGE_STATUS_PEER_READY */

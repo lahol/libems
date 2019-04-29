@@ -93,7 +93,7 @@ void ems_communicator_destroy(EMSCommunicator *comm);
 void ems_communicator_add_connection(EMSCommunicator *comm);
 
 /* Inform the communicator and the peer about a closed or lost connection. */
-void ems_communicator_remove_connection(EMSCommunicator *comm);
+void ems_communicator_remove_connection(EMSCommunicator *comm, uint32_t remote_id);
 
 /* Set up the connection of the communicator. */
 int ems_communicator_connect(EMSCommunicator *comm);

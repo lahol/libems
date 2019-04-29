@@ -11,12 +11,14 @@
 void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
 void *ems_peer_check_messages(EMSPeer *peer);
 
-void _ems_peer_signal_change(EMSPeer *peer)
+void _ems_peer_signal_change(EMSPeer *peer, uint32_t peer_status, uint32_t remote_id)
 {
     EMSMessage *msg = ems_message_new(EMS_MESSAGE_STATUS_PEER_CHANGED,
                                       peer->id,
                                       peer->id,
                                       "peer", peer,
+                                      "peer-status", peer_status,
+                                      "remote-id", remote_id,
                                       NULL, NULL);
     ems_peer_push_message(peer, msg);
 }
@@ -210,7 +212,7 @@ void ems_peer_set_id(EMSPeer *peer, uint32_t id)
 
     pthread_mutex_unlock(&peer->peer_lock);
 
-    _ems_peer_signal_change(peer);
+    _ems_peer_signal_change(peer, EMS_PEER_STATUS_ID_CHANGED, id);
 }
 
 uint32_t ems_peer_get_id(EMSPeer *peer)
@@ -294,7 +296,7 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
             fprintf(stderr, "[%d] connection ADD\n", getpid());
 #endif
             pthread_mutex_unlock(&peer->peer_lock);
-            _ems_peer_signal_change(peer);
+            _ems_peer_signal_change(peer, EMS_PEER_STATUS_CONNECTION_ADD, 0);
             break;
         case __EMS_MESSAGE_CONNECTION_DEL:
             pthread_mutex_lock(&peer->peer_lock);
@@ -303,7 +305,7 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
             fprintf(stderr, "[%d] connection DEL\n", getpid());
 #endif
             pthread_mutex_unlock(&peer->peer_lock);
-            _ems_peer_signal_change(peer);
+            _ems_peer_signal_change(peer, EMS_PEER_STATUS_CONNECTION_DEL, ((EMSMessageIntConnectionDel *)msg)->remote_id);
             break;
         case __EMS_MESSAGE_TERM:
             {

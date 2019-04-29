@@ -34,7 +34,11 @@ typedef EMSMessage EMSMessageIntConnectionAdd;
 
 /* Removed connection */
 #define __EMS_MESSAGE_CONNECTION_DEL 0x80000006
-typedef EMSMessage EMSMessageIntConnectionDel;
+typedef struct {
+    EMSMessage parent;
+    
+    uint32_t remote_id;
+} EMSMessageIntConnectionDel;
 
 /* Register those internal types. This gets called once from ems_init. */
 int ems_messages_register_internal_types(void);

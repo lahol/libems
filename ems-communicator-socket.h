@@ -42,7 +42,7 @@ typedef struct {
     /* The type of this socket/fd. */
     EMSSocketType type;
 
-    /* The id of the peer if this is a data socket. */
+    /* The id of the remote peer if this is a data socket. */
     uint32_t id;
 } EMSSocketInfo;
 

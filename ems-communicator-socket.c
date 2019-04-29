@@ -137,7 +137,7 @@ void ems_communicator_socket_disconnect_peers(EMSCommunicatorSocket *comm)
         si = (EMSSocketInfo *)active->data;
 
         if (si->type == EMS_SOCKET_TYPE_DATA) {
-            ems_communicator_remove_connection((EMSCommunicator *)comm);
+            ems_communicator_remove_connection((EMSCommunicator *)comm, si->id);
         }
         if (si->type == EMS_SOCKET_TYPE_DATA || si->type == EMS_SOCKET_TYPE_MASTER) {
             epoll_ctl(comm->epoll_fd, EPOLL_CTL_DEL, si->fd, NULL);
@@ -158,9 +158,9 @@ void ems_communicator_socket_disconnect_peer(EMSCommunicatorSocket *comm, EMSSoc
     EMSList *tmp;
     for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
         if (tmp->data == sock_info) {
-            ems_free(sock_info);
             comm->socket_list = ems_list_delete_link(comm->socket_list, tmp);
-            ems_communicator_remove_connection((EMSCommunicator *)comm);
+            ems_communicator_remove_connection((EMSCommunicator *)comm, sock_info->id);
+            ems_free(sock_info);
             break;
         }
     }
@@ -177,9 +177,9 @@ void ems_communicator_socket_close_connection(EMSCommunicatorSocket *comm, uint3
             epoll_ctl(comm->epoll_fd, EPOLL_CTL_DEL, sock_info->fd, NULL);
             close(sock_info->fd);
 
-            ems_free(sock_info);
             comm->socket_list = ems_list_delete_link(comm->socket_list, tmp);
-            ems_communicator_remove_connection((EMSCommunicator *)comm);
+            ems_communicator_remove_connection((EMSCommunicator *)comm, sock_info->id);
+            ems_free(sock_info);
             break;
         }
     }
