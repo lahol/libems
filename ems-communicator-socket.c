@@ -240,7 +240,7 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
         else {
             /* find slave */
             peer = _ems_communicator_socket_get_peer(comm, msg->recipient_id);
-            if (ems_util_write_full(peer->fd, buffer, buflen) < 0)
+            if (peer && ems_util_write_full(peer->fd, buffer, buflen) < 0)
                 ems_communicator_socket_disconnect_peer(comm, peer);
         }
         ems_free(buffer);
