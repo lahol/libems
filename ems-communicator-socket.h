@@ -43,7 +43,7 @@ typedef struct {
     EMSSocketType type;
 
     /* The id of the remote peer if this is a data socket. */
-    uint32_t id;
+    uint64_t id;
 } EMSSocketInfo;
 
 typedef struct _EMSCommunicatorSocket EMSCommunicatorSocket;

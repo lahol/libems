@@ -13,7 +13,7 @@
 typedef struct {
     EMSMessage parent;
 
-    uint32_t peer_id;
+    uint64_t peer_id;
 } EMSMessageIntSetId;
 
 /* Either the master or the slave is about to leave */
@@ -37,7 +37,7 @@ typedef EMSMessage EMSMessageIntConnectionAdd;
 typedef struct {
     EMSMessage parent;
     
-    uint32_t remote_id;
+    uint64_t remote_id;
 } EMSMessageIntConnectionDel;
 
 /* Register those internal types. This gets called once from ems_init. */

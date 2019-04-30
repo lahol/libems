@@ -27,7 +27,7 @@ typedef int (*EMSCommunicatorDisconnect)(EMSCommunicator *);
 typedef int (*EMSCommunicatorSendMessage)(EMSCommunicator *, EMSMessage *);
 typedef void (*EMSCommunicatorDestroy)(EMSCommunicator *);
 typedef void (*EMSCommunicatorHandleInternalMessage)(EMSCommunicator *, EMSMessage *);
-typedef void (*EMSCommunicatorCloseConnection)(EMSCommunicator *, uint32_t);
+typedef void (*EMSCommunicatorCloseConnection)(EMSCommunicator *, uint64_t);
 typedef void (*EMSCommunicatorFlushOutgoingMessages)(EMSCommunicator *);
 
 #include "ems-peer.h"
@@ -43,7 +43,7 @@ struct _EMSCommunicator {
     EMSPeer *peer;
 
     /* The unique id of the corresponding peer in the network. */
-    uint32_t peer_id;
+    uint64_t peer_id;
 
     /* The number of open connections of this communicator. */
     uint32_t open_connection_count;
@@ -93,7 +93,7 @@ void ems_communicator_destroy(EMSCommunicator *comm);
 void ems_communicator_add_connection(EMSCommunicator *comm);
 
 /* Inform the communicator and the peer about a closed or lost connection. */
-void ems_communicator_remove_connection(EMSCommunicator *comm, uint32_t remote_id);
+void ems_communicator_remove_connection(EMSCommunicator *comm, uint64_t remote_id);
 
 /* Set up the connection of the communicator. */
 int ems_communicator_connect(EMSCommunicator *comm);
@@ -108,13 +108,13 @@ int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg);
 void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage *msg);
 
 /* Close the connection to the specified peer. */
-void ems_communicator_close_connection(EMSCommunicator *comm, uint32_t peer_id);
+void ems_communicator_close_connection(EMSCommunicator *comm, uint64_t peer_id);
 
 /* Set the status of the communicator. */
 void ems_communicator_set_status(EMSCommunicator *comm, EMSCommunicatorStatus status);
 
 /* Set the id of the peer, retrieved from the master. */
-void ems_communicator_set_peer_id(EMSCommunicator *comm, uint32_t peer_id);
+void ems_communicator_set_peer_id(EMSCommunicator *comm, uint64_t peer_id);
 
 /* Send all outstanding outgoing messages. */
 void ems_communicator_flush_outgoing_messages(EMSCommunicator *comm);

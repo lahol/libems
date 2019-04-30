@@ -130,7 +130,7 @@ void ems_messages_set_magic(char *magic)
 /* Create a new message of the given type, followed by the recipient and sender ids.
  * After this a “NULL, NULL”-terminated sequence of key/value-pairs may follow.
  */
-EMSMessage *ems_message_new(uint32_t type, uint32_t recipient_id, uint32_t sender_id, ...)
+EMSMessage *ems_message_new(uint32_t type, uint64_t recipient_id, uint64_t sender_id, ...)
 {
     EMSMessageClassInternal *cls = _ems_message_type_get_class(type);
     if (ems_unlikely(!cls))
@@ -209,30 +209,6 @@ EMSMessage *ems_message_new(uint32_t type, uint32_t recipient_id, uint32_t sende
     return msg;
 }
 
-#if 0
-/* Set a value given by some key. */
-void ems_message_set_value(EMSMessage *msg, const char *key, const void *value)
-{
-    if (ems_unlikely(!msg))
-        return;
-
-    EMSMessageClass *cls;
-
-    if (!strcmp(key, "sender-id")) {
-        msg->sender_id = EMS_UTIL_POINTER_TO_INT(value);
-    }
-    else if (!strcmp(key, "recipient-id")) {
-        msg->recipient_id = EMS_UTIL_POINTER_TO_INT(value);
-    }
-    else {
-        cls = _ems_message_type_get_class(msg->type);
-        if (ems_unlikely(!cls) || !cls->msg_set_value)
-            return;
-        cls->msg_set_value(msg, key, value);
-    }
-}
-#endif
-
 /* Encode a message. This calls the function from the class or writes only the generic part. */
 size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer)
 {
@@ -247,9 +223,9 @@ size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer)
 
     strncpy((char *)(*buffer), msg_magic, 4);
     ems_message_write_u32(*buffer, 4, msg->type);
-    ems_message_write_u32(*buffer, 8, msg->recipient_id);
-    ems_message_write_u32(*buffer, 12, msg->sender_id);
-    ems_message_write_u32(*buffer, 16, 0);
+    ems_message_write_u64(*buffer, 8, msg->recipient_id);
+    ems_message_write_u64(*buffer, 16, msg->sender_id);
+    ems_message_write_u32(*buffer, 24, 0);
 
     if (cls->klass.msg_encode)
         return cls->klass.msg_encode(msg, buffer, buflen);
@@ -281,11 +257,11 @@ EMSMessage *ems_message_decode_header(uint8_t *buffer, size_t buflen, size_t *pa
 
     EMSMessage *msg = ems_alloc(cls->klass.size);
     msg->type = type;
-    msg->recipient_id = ems_message_read_u32(buffer, 8);
-    msg->sender_id = ems_message_read_u32(buffer, 12);
+    msg->recipient_id = ems_message_read_u64(buffer, 8);
+    msg->sender_id = ems_message_read_u64(buffer, 16);
 
     if (payload_size)
-        *payload_size = (size_t)ems_message_read_u32(buffer, 16);
+        *payload_size = (size_t)ems_message_read_u32(buffer, 24);
 
     return msg;
 }

@@ -16,7 +16,7 @@ typedef struct {
     EMSMessage parent;
     EMSPeer *peer;
     uint32_t peer_status;
-    uint32_t remote_id;         /* set if connection is deleted */
+    uint64_t remote_id;         /* set if connection is deleted */
 } EMSMessageStatusPeerChanged;
 
 /* The peer is connected and ready to work.

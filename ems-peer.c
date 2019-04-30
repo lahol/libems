@@ -11,7 +11,7 @@
 void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
 void *ems_peer_check_messages(EMSPeer *peer);
 
-void _ems_peer_signal_change(EMSPeer *peer, uint32_t peer_status, uint32_t remote_id)
+void _ems_peer_signal_change(EMSPeer *peer, uint32_t peer_status, uint64_t remote_id)
 {
     EMSMessage *msg = ems_message_new(EMS_MESSAGE_STATUS_PEER_CHANGED,
                                       peer->id,
@@ -190,9 +190,9 @@ uint32_t ems_peer_get_connection_count(EMSPeer *peer)
     return count;
 }
 
-uint32_t ems_peer_generate_new_slave_id(EMSPeer *peer)
+uint64_t ems_peer_generate_new_slave_id(EMSPeer *peer)
 {
-    uint32_t new_id;
+    uint64_t new_id;
     pthread_mutex_lock(&peer->peer_lock);
     new_id = ++peer->max_slave_id;
     pthread_mutex_unlock(&peer->peer_lock);
@@ -200,7 +200,7 @@ uint32_t ems_peer_generate_new_slave_id(EMSPeer *peer)
     return new_id;
 }
 
-void ems_peer_set_id(EMSPeer *peer, uint32_t id)
+void ems_peer_set_id(EMSPeer *peer, uint64_t id)
 {
     EMSList *tmp;
     pthread_mutex_lock(&peer->peer_lock);
@@ -215,7 +215,7 @@ void ems_peer_set_id(EMSPeer *peer, uint32_t id)
     _ems_peer_signal_change(peer, EMS_PEER_STATUS_ID_CHANGED, id);
 }
 
-uint32_t ems_peer_get_id(EMSPeer *peer)
+uint64_t ems_peer_get_id(EMSPeer *peer)
 {
     return peer ? peer->id : EMS_MESSAGE_RECIPIENT_ALL;
 }

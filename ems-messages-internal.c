@@ -10,25 +10,25 @@
 /* __EMS_MESSAGE_SET_ID */
 size_t _ems_message_int_set_id_encode(EMSMessage *msg, uint8_t **buffer, size_t buflen)
 {
-    if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 4))
-        *buffer = ems_realloc(*buffer, EMS_MESSAGE_HEADER_SIZE + 4);
+    if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 8))
+        *buffer = ems_realloc(*buffer, EMS_MESSAGE_HEADER_SIZE + 8);
     /* payload_size */
-    ems_message_write_payload_size(*buffer, 4);
+    ems_message_write_payload_size(*buffer, 8);
 
     /* the actual data */
-    ems_message_write_u32(*buffer, EMS_MESSAGE_HEADER_SIZE, ((EMSMessageIntSetId *)msg)->peer_id);
+    ems_message_write_u64(*buffer, EMS_MESSAGE_HEADER_SIZE, ((EMSMessageIntSetId *)msg)->peer_id);
 
-    return EMS_MESSAGE_HEADER_SIZE + 4;
+    return EMS_MESSAGE_HEADER_SIZE + 8;
 }
 
 void _ems_message_int_set_id_decode(EMSMessage *msg, uint8_t *payload, size_t buflen)
 {
-    if (ems_unlikely(buflen < 4)) {
+    if (ems_unlikely(buflen < 8)) {
         ((EMSMessageIntSetId *)msg)->peer_id = 0;
         return;
     }
 
-    ((EMSMessageIntSetId *)msg)->peer_id = ems_message_read_u32(payload, 0);
+    ((EMSMessageIntSetId *)msg)->peer_id = ems_message_read_u64(payload, 0);
 }
 
 void _ems_message_int_set_id_copy(EMSMessage *dst, EMSMessage *src)
@@ -51,24 +51,24 @@ void _ems_message_int_set_id_copy(EMSMessage *dst, EMSMessage *src)
 /* __EMS_MESSAGE_CONNECTION_DEL */
 size_t _ems_message_int_connection_del_encode(EMSMessage *msg, uint8_t **buffer, size_t buflen)
 {
-    if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 4))
-        *buffer = ems_realloc(*buffer, EMS_MESSAGE_HEADER_SIZE + 4);
+    if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 8))
+        *buffer = ems_realloc(*buffer, EMS_MESSAGE_HEADER_SIZE + 8);
 
-    ems_message_write_payload_size(*buffer, 4);
+    ems_message_write_payload_size(*buffer, 8);
 
-    ems_message_write_u32(*buffer, EMS_MESSAGE_HEADER_SIZE, ((EMSMessageIntConnectionDel *)msg)->remote_id);
+    ems_message_write_u64(*buffer, EMS_MESSAGE_HEADER_SIZE, ((EMSMessageIntConnectionDel *)msg)->remote_id);
 
-    return EMS_MESSAGE_HEADER_SIZE + 4;
+    return EMS_MESSAGE_HEADER_SIZE + 8;
 }
 
 void _ems_message_int_connection_del_decode(EMSMessage *msg, uint8_t *payload, size_t buflen)
 {
-    if (ems_unlikely(buflen < 4)) {
+    if (ems_unlikely(buflen < 8)) {
         ((EMSMessageIntConnectionDel *)msg)->remote_id = 0;
         return;
     }
 
-    ((EMSMessageIntConnectionDel *)msg)->remote_id = ems_message_read_u32(payload, 0);
+    ((EMSMessageIntConnectionDel *)msg)->remote_id = ems_message_read_u64(payload, 0);
 }
 
 void _ems_message_int_connection_del_copy(EMSMessage *dst, EMSMessage *src)
@@ -107,7 +107,7 @@ int ems_messages_register_internal_types(void)
     memset(&msgclass, 0, sizeof(EMSMessageClass));
     msgclass.msgtype       = __EMS_MESSAGE_SET_ID;
     msgclass.size          = sizeof(EMSMessageIntSetId);
-    msgclass.min_payload   = 4;
+    msgclass.min_payload   = 8;
     msgclass.msg_encode    = _ems_message_int_set_id_encode;
     msgclass.msg_decode    = _ems_message_int_set_id_decode;
     msgclass.msg_copy      = _ems_message_int_set_id_copy;
@@ -116,7 +116,7 @@ int ems_messages_register_internal_types(void)
         return rc;
 
     ems_message_type_add_member(__EMS_MESSAGE_SET_ID,
-                                EMS_MSG_MEMBER_UINT,
+                                EMS_MSG_MEMBER_UINT64,
                                 0,
                                 "peer-id",
                                 offsetof(EMSMessageIntSetId, peer_id),
@@ -158,7 +158,7 @@ int ems_messages_register_internal_types(void)
     memset(&msgclass, 0, sizeof(EMSMessageClass));
     msgclass.msgtype       = __EMS_MESSAGE_CONNECTION_DEL;
     msgclass.size          = sizeof(EMSMessageIntConnectionDel);
-    msgclass.min_payload   = 4;
+    msgclass.min_payload   = 8;
     msgclass.msg_encode    = _ems_message_int_connection_del_encode;
     msgclass.msg_decode    = _ems_message_int_connection_del_decode;
     msgclass.msg_copy      = _ems_message_int_connection_del_copy;
@@ -167,7 +167,7 @@ int ems_messages_register_internal_types(void)
         return rc;
 
     ems_message_type_add_member(__EMS_MESSAGE_CONNECTION_DEL,
-                                EMS_MSG_MEMBER_UINT,
+                                EMS_MSG_MEMBER_UINT64,
                                 0,
                                 "remote-id",
                                 offsetof(EMSMessageIntConnectionDel, remote_id),

@@ -4,6 +4,7 @@
 #include "ems.h"
 #include <getopt.h>
 #include <string.h>
+#include <inttypes.h>
 
 #define EMS_TEST_MESSAGE_QUIT      (EMS_MESSAGE_USER + 1)
 
@@ -110,7 +111,7 @@ int parse_options(int argc, char **argv)
 
 void handle_peer_message(EMSPeer *peer, EMSMessage *msg, void *userdata)
 {
-    fprintf(stderr, "%d %s received msg 0x%08x, peer_id: %d\n",
+    fprintf(stderr, "%d %s received msg 0x%08x, peer_id: %" PRIu64 "\n",
             getpid(),
             peer->role == EMS_PEER_ROLE_MASTER ? "MASTER" : "SLAVE",
             msg->type,

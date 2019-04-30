@@ -107,7 +107,7 @@ int ems_communicator_socket_accept(EMSCommunicatorSocket *comm, int fd)
 
     ems_communicator_add_connection((EMSCommunicator *)comm);
 
-    uint32_t new_id = 0;
+    uint64_t new_id = 0;
     new_id = ems_peer_generate_new_slave_id(((EMSCommunicator *)comm)->peer);
     socket_info->id = new_id;
 
@@ -166,7 +166,7 @@ void ems_communicator_socket_disconnect_peer(EMSCommunicatorSocket *comm, EMSSoc
     }
 }
 
-void ems_communicator_socket_close_connection(EMSCommunicatorSocket *comm, uint32_t peer_id)
+void ems_communicator_socket_close_connection(EMSCommunicatorSocket *comm, uint64_t peer_id)
 {
     EMSList *tmp;
     EMSSocketInfo *sock_info = NULL;
@@ -186,7 +186,7 @@ void ems_communicator_socket_close_connection(EMSCommunicatorSocket *comm, uint3
 }
 
 /* Find the socket associated to the given peer. */
-EMSSocketInfo *_ems_communicator_socket_get_peer(EMSCommunicatorSocket *comm, uint32_t peer_id)
+EMSSocketInfo *_ems_communicator_socket_get_peer(EMSCommunicatorSocket *comm, uint64_t peer_id)
 {
     EMSList *tmp;
     for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
@@ -215,12 +215,12 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
             for (tmp = comm->socket_list; tmp; tmp = tmp->next) {
                 peer = (EMSSocketInfo *)tmp->data;
 #ifdef DEBUG
-                fprintf(stderr, "[%d] Send message 0x%08x to %u\n", getpid(), msg->type, peer->id);
+                fprintf(stderr, "[%d] Send message 0x%08x to %" PRIu64 "\n", getpid(), msg->type, peer->id);
 #endif
                 if (peer->type == EMS_SOCKET_TYPE_DATA) {
                     if ((rc = ems_util_write_full(peer->fd, buffer, buflen)) <= 0) {
 #ifdef DEBUG
-                        fprintf(stderr, "[%d] write to %d returned %ld\n", getpid(), peer->id, rc);
+                        fprintf(stderr, "[%d] write to %" PRIu64 " returned %ld\n", getpid(), peer->id, rc);
 #endif
                         err_list = ems_list_prepend(err_list, tmp->data);
                     }

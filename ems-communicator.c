@@ -112,7 +112,7 @@ int ems_communicator_send_message(EMSCommunicator *comm, EMSMessage *msg)
     return -1;
 }
 
-void ems_communicator_close_connection(EMSCommunicator *comm, uint32_t peer_id)
+void ems_communicator_close_connection(EMSCommunicator *comm, uint64_t peer_id)
 {
     if (comm && comm->close_connection)
         comm->close_connection(comm, peer_id);
@@ -181,7 +181,7 @@ void ems_communicator_set_status(EMSCommunicator *comm, EMSCommunicatorStatus st
     }
 }
 
-void ems_communicator_set_peer_id(EMSCommunicator *comm, uint32_t peer_id)
+void ems_communicator_set_peer_id(EMSCommunicator *comm, uint64_t peer_id)
 {
     if (ems_unlikely(!comm))
         return;
@@ -200,7 +200,7 @@ void ems_communicator_add_connection(EMSCommunicator *comm)
     ems_peer_push_message(comm->peer, msg);
 }
 
-void ems_communicator_remove_connection(EMSCommunicator *comm, uint32_t remote_id)
+void ems_communicator_remove_connection(EMSCommunicator *comm, uint64_t remote_id)
 {
     if (ems_unlikely(!comm))
         return;

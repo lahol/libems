@@ -36,7 +36,7 @@ struct _EMSPeer {
     EMSPeerRole role;
 
     /* The id identifying this peer in the network. */
-    uint32_t id;
+    uint64_t id;
 
     /* The message queue for incoming messages. */
     EMSMessageQueue msgqueue;
@@ -46,7 +46,7 @@ struct _EMSPeer {
 
     /* The last id given to a peer. Each new peer gets a message from the
      * master informing it about its id. */
-    uint32_t max_slave_id;
+    uint64_t max_slave_id;
 
     /* The number of open connections. This may change with new incoming connections
      * or if slaves leave, or there is an error in the connection. */
@@ -106,13 +106,13 @@ void ems_peer_flush_outgoing_messages(EMSPeer *peer);
 uint32_t ems_peer_get_connection_count(EMSPeer *peer);
 
 /* Request a new identifier for a slave. */
-uint32_t ems_peer_generate_new_slave_id(EMSPeer *peer);
+uint64_t ems_peer_generate_new_slave_id(EMSPeer *peer);
 
 /* Set the peer’s own id. */
-void ems_peer_set_id(EMSPeer *peer, uint32_t id);
+void ems_peer_set_id(EMSPeer *peer, uint64_t id);
 
 /* Retrieve the id of this peer. */
-uint32_t ems_peer_get_id(EMSPeer *peer);
+uint64_t ems_peer_get_id(EMSPeer *peer);
 
 /* Push an internal message to the message queue and inform all waiting threads
  * about this.

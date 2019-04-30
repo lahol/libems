@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 
 #define EMS_MESSAGE_RECIPIENT_MASTER 0
-#define EMS_MESSAGE_RECIPIENT_ALL    0xffffffff
+#define EMS_MESSAGE_RECIPIENT_ALL    ((uint64_t)0xffffffffffffffff)
 
 /* Some (arbitrary) offset for user-defined messages. We need some non-internal messages
  * to propagate changes ourselves. Keep in mind that we might change this according
@@ -13,18 +13,18 @@
 
 typedef struct {
     uint32_t type;           /* The application-defined message type. */
-    uint32_t recipient_id;   /* The identifier of the recipient or (uint32_t)(-1) for all. */
-    uint32_t sender_id;      /* The identifier of the sender. */
+    uint64_t recipient_id;   /* The identifier of the recipient or (uint32_t)(-1) for all. */
+    uint64_t sender_id;      /* The identifier of the sender. */
 } EMSMessage;
 
 /* In the binary stream, the generic message header consists of the following:
  * 4 byte: magic string, indicating the start of a message used with this library
  * 4 byte: type, uint32_t in network byte order
- * 4 byte: recipient_id
- * 4 byte: sender_id
+ * 8 byte: recipient_id
+ * 8 byte: sender_id
  * 4 byte: payload size
  */
-#define EMS_MESSAGE_HEADER_SIZE 20 /* magic + the above + payload_size*/
+#define EMS_MESSAGE_HEADER_SIZE 28 /* magic + the above + payload_size*/
 
 typedef struct {
     /* The type of the message belonging to this class. */
@@ -112,7 +112,7 @@ void ems_messages_set_magic(char *magic);
 /* Create a new message of the given type, followed by the recipient and sender ids.
  * After this a “NULL, NULL”-terminated sequence of key/value-pairs may follow.
  */
-EMSMessage *ems_message_new(uint32_t type, uint32_t recipient_id, uint32_t sender_id, ...);
+EMSMessage *ems_message_new(uint32_t type, uint64_t recipient_id, uint64_t sender_id, ...);
 
 /* Copy a message. */
 int ems_message_copy(EMSMessage *dst, EMSMessage *src);
