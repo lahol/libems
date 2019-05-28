@@ -196,6 +196,10 @@ EMSMessage *ems_message_new(uint32_t type, uint64_t recipient_id, uint64_t sende
                             (*((char **)(((void *)msg) + member->offset)))[0] = 0;
                     }
                     break;
+                case EMS_MSG_MEMBER_ARRAY:
+                    ems_array_copy(((EMSArray *)(((void *)msg) + member->offset)),
+                                   (EMSArray *)va_arg(args, void *));
+                    break;
                 default:
                     fprintf(stderr, "Unable to set value of type %d in member `%s'\n", member->type, key);
                     (void)va_arg(args, void *);

@@ -22,6 +22,7 @@ typedef struct {
 } EMSArray;
 
 void ems_array_init(EMSArray *array, EMSType type, uint32_t length);
+void ems_array_copy(EMSArray *dst, EMSArray *src);
 
 void ems_array_clear(EMSArray *array);
 

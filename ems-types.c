@@ -24,6 +24,20 @@ void ems_array_init(EMSArray *array, EMSType type, uint32_t length)
     }
 }
 
+void ems_array_copy(EMSArray *dst, EMSArray *src)
+{
+    if (dst && src) {
+        ems_free(dst->data);
+        dst->member_type = src->member_type;
+        dst->length = src->length;
+        dst->data = ems_alloc(dst->length * _ems_element_sizes[dst->member_type]);
+        memcpy(dst->data, src->data, dst->length * _ems_element_sizes[dst->member_type]);
+    }
+    else if (dst) {
+        ems_array_init(dst, 0, 0);
+    }
+}
+
 void ems_array_clear(EMSArray *array)
 {
     if (array) {
