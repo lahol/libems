@@ -225,7 +225,7 @@ size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer)
     size_t buflen = EMS_MESSAGE_HEADER_SIZE + cls->klass.min_payload;
     *buffer = ems_alloc(buflen);
 
-    strncpy((char *)(*buffer), msg_magic, 4);
+    memcpy((char *)(*buffer), msg_magic, 4);
     ems_message_write_u32(*buffer, 4, msg->type);
     ems_message_write_u64(*buffer, 8, msg->recipient_id);
     ems_message_write_u64(*buffer, 16, msg->sender_id);

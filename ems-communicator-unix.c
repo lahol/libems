@@ -30,7 +30,7 @@ int ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
 
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, comm->socket_name, 108);
+    strncpy(addr.sun_path, comm->socket_name, 107);
 
     if (((EMSCommunicator *)comm)->role == EMS_PEER_ROLE_MASTER) {
         /* bind socket */
