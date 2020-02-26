@@ -9,7 +9,7 @@ typedef struct {
     EMSCommunicatorSocket parent;
 
     /* Path of the named fifo this connection is associated to. */
-    char socket_name[256];
+    char socket_name[108];
 } EMSCommunicatorUnix;
 
 /* Create and set up a new communicator. */
