@@ -296,6 +296,7 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
         }
 
         ems_message_decode_payload(msg, buffer, payload_size);
+        ems_free(buffer);
     }
 
     /* FIXME: Do we really need this distinction? Can’t we just push to the peer and

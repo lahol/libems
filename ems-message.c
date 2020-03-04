@@ -111,9 +111,18 @@ EMSMessageClassMember *_ems_message_type_get_member(EMSMessageClassInternal *cls
     return NULL;
 }
 
+void _ems_message_class_member_free(EMSMessageClassMember *member)
+{
+    if (member) {
+        free(member->name);
+        ems_free(member);
+    }
+}
+
 void _ems_message_class_internal_free(EMSMessageClassInternal *msgclass)
 {
-    ems_list_free_full(msgclass->members, (EMSDestroyNotifyFunc)ems_free);
+    ems_list_free_full(msgclass->members, (EMSDestroyNotifyFunc)_ems_message_class_member_free);
+    ems_free(msgclass);
 }
 
 void ems_message_types_clear(void)
