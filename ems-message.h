@@ -49,7 +49,8 @@ typedef struct {
      */
     void (*msg_decode)(EMSMessage *, uint8_t *, size_t);
 
-    /* Free the message. If this is NULL, ems_free() is used. */
+    /* Free the message. If this is NULL, ems_free() will be used.
+     * Be sure to call ems_free on the message itself after freeing all other resources. */
     void (*msg_free)(EMSMessage *);
 
     /* Copy the message. */
