@@ -28,7 +28,7 @@ void ems_message_queue_clear(EMSMessageQueue *mq)
         EMSMessageQueueEntry *tmp;;
         while (mq->head) {
             tmp = mq->head->next;
-            ems_message_free(mq->head->data);
+            ems_message_unref(mq->head->data);
             ems_free(mq->head);
             mq->head = tmp;
         }

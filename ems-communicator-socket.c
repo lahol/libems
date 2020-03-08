@@ -119,7 +119,7 @@ int ems_communicator_socket_accept(EMSCommunicatorSocket *comm, int fd)
 
     ems_communicator_socket_send_message(comm, msg);
 
-    ems_message_free(msg);
+    ems_message_unref(msg);
 
     return EMS_OK;
 
@@ -244,7 +244,7 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
                 ems_communicator_socket_disconnect_peer(comm, peer);
         }
         ems_free(buffer);
-        ems_message_free(msg);
+        ems_message_unref(msg);
     }
 }
 
@@ -290,7 +290,7 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
 #ifdef DEBUG
             fprintf(stderr, "[%d] read_full returned %ld\n", getpid(), rc);
 #endif
-            ems_message_free(msg);
+            ems_message_unref(msg);
             ems_free(buffer);
             return EMS_ERROR_INVALID_SOCKET;
         }
@@ -303,7 +303,7 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
      * let the peer handle this? */
     if (EMS_MESSAGE_IS_INTERNAL(msg)) {
         ems_communicator_handle_internal_message((EMSCommunicator *)comm, msg);
-        ems_message_free(msg);
+        ems_message_unref(msg);
     }
     else {
         ems_peer_push_message(((EMSCommunicator *)comm)->peer, msg);

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <ems-types.h>
+#include <stdatomic.h>
 
 #define EMS_MESSAGE_RECIPIENT_MASTER 0
 #define EMS_MESSAGE_RECIPIENT_ALL    ((uint64_t)0xffffffffffffffff)
@@ -16,6 +17,7 @@ typedef struct {
     uint32_t type;           /* The application-defined message type. */
     uint64_t recipient_id;   /* The identifier of the recipient or (uint32_t)(-1) for all. */
     uint64_t sender_id;      /* The identifier of the sender. */
+    atomic_int reference_count;
 } EMSMessage;
 
 /* In the binary stream, the generic message header consists of the following:
@@ -136,8 +138,11 @@ void ems_message_decode_payload(EMSMessage *msg, uint8_t *payload, size_t payloa
 /* Only decode the payload size. This is used to read the rest of the message. */
 EMSMessage *ems_message_decode_header(uint8_t *buffer, size_t buflen, size_t *payload_size);
 
-/* Free a message. */
-void ems_message_free(EMSMessage *msg);
+/* Increase reference count of a message. */
+void ems_message_ref(EMSMessage *msg);
+
+/* Decrease reference count of a message and free if it drops to zero. */
+void ems_message_unref(EMSMessage *msg);
 
 /* Message, userdata */
 typedef void (*EMSHandleMessage)(EMSMessage *, void *);

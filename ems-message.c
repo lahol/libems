@@ -28,6 +28,8 @@ EMSList *msg_classes = NULL;
 /* A magic 4 byte string indicating a message of this library. */
 char msg_magic[] = "EMSG";
 
+void ems_message_free(EMSMessage *msg);
+
 static inline
 EMSMessageClassInternal *_ems_message_type_get_class(uint32_t type)
 {
@@ -149,6 +151,7 @@ EMSMessage *ems_message_new(uint32_t type, uint64_t recipient_id, uint64_t sende
     msg->type = type;
     msg->recipient_id = recipient_id;
     msg->sender_id = sender_id;
+    atomic_store(&msg->reference_count, 1);
 
     va_list args;
     va_start(args, sender_id);
@@ -272,6 +275,7 @@ EMSMessage *ems_message_decode_header(uint8_t *buffer, size_t buflen, size_t *pa
     msg->type = type;
     msg->recipient_id = ems_message_read_u64(buffer, 8);
     msg->sender_id = ems_message_read_u64(buffer, 16);
+    atomic_store(&msg->reference_count, 1);
 
     if (payload_size)
         *payload_size = (size_t)ems_message_read_u32(buffer, 24);
@@ -290,6 +294,18 @@ void ems_message_free(EMSMessage *msg)
         else
             ems_free(msg);
     }
+}
+
+void ems_message_ref(EMSMessage *msg)
+{
+    if (msg)
+        atomic_fetch_add(&msg->reference_count, 1);
+}
+
+void ems_message_unref(EMSMessage *msg)
+{
+    if (msg && atomic_fetch_sub(&msg->reference_count, 1) == 1)
+        ems_message_free(msg);
 }
 
 /* Copy a message. */
@@ -320,6 +336,7 @@ EMSMessage *ems_message_dup(EMSMessage *msg)
 
     EMSMessage *new_msg = ems_alloc0(cls->klass.size);
     new_msg->type = msg->type;
+    atomic_store(&msg->reference_count, 1);
 
     ems_message_copy(new_msg, msg);
 

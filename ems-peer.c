@@ -139,7 +139,7 @@ void ems_peer_shutdown(EMSPeer *peer)
                               peer->id,
                               NULL, NULL);
         ems_peer_send_message(peer, msg);
-        ems_message_free(msg);
+        ems_message_unref(msg);
 
         /* wait for messages until there are no open connectinons anymore */
         while (ems_peer_get_connection_count(peer)) {
@@ -154,7 +154,7 @@ void ems_peer_shutdown(EMSPeer *peer)
                               peer->id,
                               NULL, NULL);
         ems_peer_send_message(peer, msg);
-        ems_message_free(msg);
+        ems_message_unref(msg);
 
         /* wait for leave ack? */
     }
@@ -314,7 +314,7 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
                                                     peer->id,
                                                     NULL, NULL);
                 ems_peer_send_message(peer, reply);
-                ems_message_free(reply);
+                ems_message_unref(reply);
 
 #ifdef DEBUG
                 fprintf(stderr, "[%d] received TERM, flushing outgoing messages\n", getpid());
@@ -328,7 +328,7 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
             break;
     }
 
-    ems_message_free(msg);
+    ems_message_unref(msg);
 }
 
 /* Filter for internal messages. */
@@ -369,7 +369,7 @@ void *_ems_peer_event_loop(struct _EMSPeerEventCallbackData *data)
                 (msg = ems_peer_get_message(data->peer)) != NULL) {
             if (data->event_cb)
                 data->event_cb(data->peer, msg, data->userdata);
-            ems_message_free(msg);
+            ems_message_unref(msg);
         }
     }
 
