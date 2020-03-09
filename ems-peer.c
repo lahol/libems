@@ -6,6 +6,7 @@
 
 #ifdef DEBUG
 #include <stdio.h>
+#include <inttypes.h>
 #endif
 
 void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
@@ -236,6 +237,10 @@ void ems_peer_signal_new_message(EMSPeer *peer)
 void ems_peer_wait_for_message(EMSPeer *peer)
 {
     pthread_mutex_lock(&peer->msg_available_lock);
+#if DEBUG
+    if (peer->msgqueue.count > 30)
+        fprintf(stderr, "msgqueue count: %" PRIu64 "\n", peer->msgqueue.count);
+#endif
     if (!ems_message_queue_peek_head(&peer->msgqueue))
         pthread_cond_wait(&peer->msg_available_cond, &peer->msg_available_lock);
     pthread_mutex_unlock(&peer->msg_available_lock);
