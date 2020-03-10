@@ -62,11 +62,6 @@ struct _EMSPeer {
      */
     unsigned int is_alive : 1;
 
-    /* Flag indicating that the internal thread watching for internal messages is
-     * running. Only used for a proper cleanup.
-     */
-    unsigned int thread_running : 1;
-
     /* Flag indicating that the message queue thread is running. */
     unsigned int msg_thread_running : 1;
 

@@ -36,10 +36,11 @@ EMSPeer *ems_peer_create(EMSPeerRole role)
     pthread_mutex_init(&peer->msg_available_lock, NULL);
     pthread_cond_init(&peer->msg_available_cond, NULL);
 
+    int rc;
 
-    if (pthread_create(&peer->check_message_thread, NULL,
-                   (PThreadCallback)ems_peer_check_messages, (void *)peer) == 0) {
-        peer->thread_running = 1;
+    if ((rc = pthread_create(&peer->check_message_thread, NULL,
+                   (PThreadCallback)ems_peer_check_messages, (void *)peer)) != 0) {
+        fprintf(stderr, "%d check message thread could not be started. Reason: %d\n", getpid(), rc);
     }
 
     return peer;
@@ -51,6 +52,7 @@ void ems_peer_destroy(EMSPeer *peer)
         return;
 
     EMSList *tmp;
+    int rc;
     while (peer->communicators) {
         tmp = peer->communicators->next;
         ems_communicator_destroy((EMSCommunicator *)peer->communicators->data);
@@ -60,11 +62,10 @@ void ems_peer_destroy(EMSPeer *peer)
 
     ems_peer_stop_event_loop(peer);
 
-    if (peer->thread_running) {
-        /* signal message to wake up thread */
-        ems_peer_signal_new_message(peer);
-        pthread_join(peer->check_message_thread, NULL);
-    }
+    /* signal message to wake up thread */
+    ems_peer_signal_new_message(peer);
+    if ((rc = pthread_join(peer->check_message_thread, NULL)) != 0)
+        fprintf(stderr, "%d ems_peer_destroy: pthread_join failed. rc: %d\n", getpid(), rc);
 
     ems_message_queue_clear(&peer->msgqueue);
 
@@ -352,7 +353,9 @@ void *ems_peer_check_messages(EMSPeer *peer)
             _ems_peer_handle_internal_message(peer, msg);
     }
 
-    peer->thread_running = 0;
+#if DEBUG
+    fprintf(stderr, "%d: ems_peer_check_messages quitting\n", getpid());
+#endif
     return NULL;
 }
 
@@ -375,12 +378,6 @@ void *_ems_peer_event_loop(struct _EMSPeerEventCallbackData *data)
             ems_message_unref(msg);
         }
     }
-
-    /* Make sure this represents the actual status (early return could set this to zero before
-     * we even set it to 1. */
-    pthread_mutex_lock(&data->peer->peer_lock);
-    data->peer->msg_thread_running = 0;
-    pthread_mutex_unlock(&data->peer->peer_lock);
 
     ems_free(data);
 
@@ -424,6 +421,7 @@ void ems_peer_stop_event_loop(EMSPeer *peer)
     if (peer->msg_thread_running) {
         ems_peer_signal_new_message(peer);
         pthread_join(peer->event_loop, NULL);
+        peer->msg_thread_running = 0;
     }
     else {
         /* just wake up event loop */
