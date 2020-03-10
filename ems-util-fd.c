@@ -20,8 +20,10 @@ ssize_t ems_util_write_full(int fd, uint8_t *buffer, size_t length)
 
     while (bytes_written < length) {
         rc = write(fd, &buffer[bytes_written], length - bytes_written);
-        if (rc <= 0)
+        if (rc <= 0) {
+            fprintf(stderr, "write_full returned %zd (written %zd/%zu)\n", rc, bytes_written, length);
             return rc;
+        }
         bytes_written += rc;
     }
 
@@ -36,6 +38,7 @@ ssize_t ems_util_read_full(int fd, uint8_t *buffer, size_t length)
     while (bytes_read < length) {
         rc = read(fd, &buffer[bytes_read], length - bytes_read);
         if (rc <= 0) {
+            fprintf(stderr, "read_full returned %zd (written %zd/%zu)\n", rc, bytes_read, length);
             return rc;
         }
         bytes_read += rc;
