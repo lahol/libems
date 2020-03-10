@@ -16,7 +16,7 @@ libems.so.1.0: $(ems_OBJ)
 	ln -sf libems.so.1 libems.so
 
 test: test.c $(ems_HEADERS)
-	$(CC) $(CFLAGS) -o test -L. -lems $(LIBS) test.c
+	$(CC) $(CFLAGS) -L. -o test test.c -lems $(LIBS)
 
 %.o: %.c $(ems_HEADERS)
 	$(CC) -I. $(CFLAGS) -fPIC -c -o $@ $<

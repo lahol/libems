@@ -54,13 +54,15 @@ EMSSocketInfo *ems_communicator_socket_add_socket(EMSCommunicatorSocket *comm, i
 
 int ems_communicator_socket_connect(EMSCommunicatorSocket *comm)
 {
-    write(comm->control_pipe[1], "C", 1);
+    if (write(comm->control_pipe[1], "C", 1) != 1)
+        return EMS_ERROR_WRITE_FAILED;
     return EMS_OK;
 }
 
 int ems_communicator_socket_disconnect(EMSCommunicatorSocket *comm)
 {
-    write(comm->control_pipe[1], "D", 1);
+    if (write(comm->control_pipe[1], "D", 1) != 1)
+        return EMS_ERROR_WRITE_FAILED;
     return EMS_OK;
 }
 
@@ -70,7 +72,8 @@ int ems_communicator_socket_send_message(EMSCommunicatorSocket *comm, EMSMessage
     if (ems_unlikely(!msg))
         return EMS_ERROR_INVALID_ARGUMENT;
     ems_message_queue_push_tail(&((EMSCommunicator *)comm)->msg_queue_outgoing, ems_message_dup(msg));
-    write(comm->control_pipe[1], "M", 1);
+    if (write(comm->control_pipe[1], "M", 1) != 1)
+        return EMS_ERROR_WRITE_FAILED;
     return EMS_OK;
 }
 
@@ -470,7 +473,8 @@ void ems_communicator_socket_set_value(EMSCommunicatorSocket *comm, const char *
 void ems_communicator_socket_clear(EMSCommunicatorSocket *comm)
 {
     if (comm->comm_socket_status & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
-        write(comm->control_pipe[1], "Q", 1);
+        if (write(comm->control_pipe[1], "Q", 1) != 1)
+            fprintf(stderr, "EMSCommunicatorSocket: Could not write to control pipe, quit\n");
     }
 
     if (comm->comm_socket_status & _EMS_COMM_SOCKET_STATUS_THREAD_RUNNING) {

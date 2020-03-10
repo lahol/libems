@@ -4,10 +4,8 @@
 #include "ems-messages-internal.h"
 #include "ems-status-messages.h"
 
-#ifdef DEBUG
 #include <stdio.h>
 #include <inttypes.h>
-#endif
 
 void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
 void *ems_peer_check_messages(EMSPeer *peer);

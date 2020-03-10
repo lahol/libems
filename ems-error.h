@@ -27,3 +27,6 @@
 
 /* A member with this name has already been added to the class. */
 #define EMS_ERROR_MEMBER_ALREADY_PRESENT                8
+
+/* Writing failed. */
+#define EMS_ERROR_WRITE_FAILED                          9
