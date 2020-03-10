@@ -336,7 +336,7 @@ EMSMessage *ems_message_dup(EMSMessage *msg)
 
     EMSMessage *new_msg = ems_alloc0(cls->klass.size);
     new_msg->type = msg->type;
-    atomic_store(&msg->reference_count, 1);
+    atomic_store(&new_msg->reference_count, 1);
 
     ems_message_copy(new_msg, msg);
 
