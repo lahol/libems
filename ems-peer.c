@@ -136,6 +136,7 @@ void ems_peer_shutdown(EMSPeer *peer)
         return;
 
     EMSMessage *msg;
+    ems_message_queue_enable(&peer->msgqueue, 0);
     if (peer->role == EMS_PEER_ROLE_MASTER) {
         /* send term msg */
         msg = ems_message_new(__EMS_MESSAGE_TERM,
@@ -284,6 +285,8 @@ EMSMessage *ems_peer_get_message(EMSPeer *peer)
     EMSMessage *msg = NULL;
     while ((msg = ems_message_queue_pop_head(&peer->msgqueue)) &&
            EMS_MESSAGE_IS_INTERNAL(msg)) {
+        if (msg->type == __EMS_MESSAGE_QUEUE_DISABLED)
+            return msg;
         _ems_peer_handle_internal_message(peer, msg);
     }
 
@@ -367,8 +370,9 @@ void *ems_peer_check_messages(EMSPeer *peer)
         ems_peer_wait_for_message(peer);
         while ((msg = ems_message_queue_pop_matching(&peer->msgqueue,
                                                      (EMSMessageFilterFunc)_ems_peer_filter_internal_message,
-                                                     NULL)) != NULL)
+                                                     NULL)) != NULL) {
             _ems_peer_handle_internal_message(peer, msg);
+        }
     }
 
 #if DEBUG
@@ -392,7 +396,7 @@ void *_ems_peer_event_loop(struct _EMSPeerEventCallbackData *data)
         ems_peer_wait_for_message(data->peer);
         while (data->peer->msg_thread_enabled &&
                 (msg = ems_peer_get_message(data->peer)) != NULL) {
-            if (data->event_cb)
+            if (data->event_cb && msg->type != __EMS_MESSAGE_QUEUE_DISABLED)
                 data->event_cb(data->peer, msg, data->userdata);
             ems_message_unref(msg);
         }
