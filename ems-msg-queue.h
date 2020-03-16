@@ -21,6 +21,7 @@ typedef struct {
     size_t filter_count;         /* number of active filters */
     size_t filter_max;           /* maximal number of filters */
     pthread_mutex_t queue_lock;  /* lock the queue */
+    void *priv;                  /* private, do not read or write here */
 } EMSMessageQueue;
 
 /* Initialize the queue. */
@@ -52,6 +53,10 @@ EMSMessage *ems_message_queue_pop_filtered(EMSMessageQueue *mq);
 
 /* Check if there is a message matching the specified filter. */
 EMSMessage *ems_message_queue_peek_filtered(EMSMessageQueue *mq);
+
+/* If the queue is disabled and the queue is empty, the special message EMSMessageQueueDisabled
+ * will be returned. Other messages still on the queue will be delivered as usual. */
+void ems_message_queue_enable(EMSMessageQueue *mq, int enable);
 
 /* This function gets a message and user-defined data.
  * It shall return 0 if the message matches the filter criteria.

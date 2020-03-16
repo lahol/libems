@@ -173,6 +173,14 @@ int ems_messages_register_internal_types(void)
                                 offsetof(EMSMessageIntConnectionDel, remote_id),
                                 NULL);
 
+    /* __EMS_MESSAGE_QUEUE_DISABLED */
+    memset(&msgclass, 0, sizeof(EMSMessageClass));
+    msgclass.msgtype       = __EMS_MESSAGE_QUEUE_DISABLED;
+    msgclass.size          = sizeof(EMSMessageQueueDisabled);
+
+    if ((rc = ems_message_register_type(__EMS_MESSAGE_QUEUE_DISABLED, &msgclass)) != EMS_OK)
+        return rc;
+
     /* EMS_MESSAGE_STATUS_PEER_CHANGED */
     memset(&msgclass, 0, sizeof(EMSMessageClass));
     msgclass.msgtype       = EMS_MESSAGE_STATUS_PEER_CHANGED;
@@ -216,6 +224,7 @@ int ems_messages_register_internal_types(void)
                                 "peer",
                                 offsetof(EMSMessageStatusPeerReady, peer),
                                 NULL);
+
 
     return EMS_OK;
 }

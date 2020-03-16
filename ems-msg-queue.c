@@ -2,6 +2,7 @@
 #include <memory.h>
 #include "ems-memory.h"
 #include "ems-util.h"
+#include "ems-messages-internal.h"
 
 struct _EMSMessageQueueEntry {
     EMSMessage *data;
@@ -29,6 +30,7 @@ void ems_message_queue_clear(EMSMessageQueue *mq)
         while (mq->head) {
             tmp = mq->head->next;
             ems_message_unref(mq->head->data);
+            ems_message_unref(mq->priv);
             ems_free(mq->head);
             mq->head = tmp;
         }
@@ -154,6 +156,12 @@ EMSMessage *ems_message_queue_pop_head(EMSMessageQueue *mq)
 
     pthread_mutex_lock(&mq->queue_lock);
     msg = _ems_message_queue_pop_head_unsafe(mq);
+
+    if (!msg) {
+        ems_message_ref(mq->priv);
+        msg = mq->priv;
+    }
+
     pthread_mutex_unlock(&mq->queue_lock);
 
     return msg;
@@ -169,6 +177,8 @@ EMSMessage *ems_message_queue_peek_head(EMSMessageQueue *mq)
     pthread_mutex_lock(&mq->queue_lock);
     if (mq->head)
         msg = mq->head->data;
+    else
+        msg = mq->priv;
     pthread_mutex_unlock(&mq->queue_lock);
     
     return msg;
@@ -201,6 +211,10 @@ found:
     }
 
 done:
+    if (!msg) {
+        ems_message_ref(mq->priv);
+        msg = mq->priv;
+    }
     pthread_mutex_unlock(&mq->queue_lock);
 
     return msg;
@@ -230,6 +244,10 @@ found:
     }
 
 done:
+    if (!msg) {
+        ems_message_ref(mq->priv);
+        msg = mq->priv;
+    }
     pthread_mutex_unlock(&mq->queue_lock);
 
     return msg;
@@ -258,7 +276,32 @@ EMSMessage *ems_message_queue_peek_filtered(EMSMessageQueue *mq)
         }
     }
 done:
+    if (!msg) {
+        msg = mq->priv;
+    }
     pthread_mutex_unlock(&mq->queue_lock);
 
     return msg;
+}
+
+void ems_message_queue_enable(EMSMessageQueue *mq, int enable)
+{
+    if (ems_unlikely(!mq))
+        return;
+
+    pthread_mutex_lock(&mq->queue_lock);
+
+    if (enable) {
+        ems_message_unref(mq->priv);
+        mq->priv = NULL;
+    }
+    else {
+        if (!mq->priv)
+            mq->priv = ems_message_new(__EMS_MESSAGE_QUEUE_DISABLED,
+                                       EMS_MESSAGE_RECIPIENT_ALL,
+                                       EMS_MESSAGE_RECIPIENT_ALL,
+                                       NULL, NULL);
+    }
+
+    pthread_mutex_unlock(&mq->queue_lock);
 }

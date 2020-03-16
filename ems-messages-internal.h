@@ -40,5 +40,11 @@ typedef struct {
     uint64_t remote_id;
 } EMSMessageIntConnectionDel;
 
+/* Signal disabled message queue. */
+#define __EMS_MESSAGE_QUEUE_DISABLED 0x80000007
+typedef struct {
+    EMSMessage parent;
+} EMSMessageQueueDisabled;
+
 /* Register those internal types. This gets called once from ems_init. */
 int ems_messages_register_internal_types(void);
