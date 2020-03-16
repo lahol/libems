@@ -370,7 +370,8 @@ void *ems_peer_check_messages(EMSPeer *peer)
         ems_peer_wait_for_message(peer);
         while ((msg = ems_message_queue_pop_matching(&peer->msgqueue,
                                                      (EMSMessageFilterFunc)_ems_peer_filter_internal_message,
-                                                     NULL)) != NULL) {
+                                                     NULL)) != NULL &&
+                msg->type != __EMS_MESSAGE_QUEUE_DISABLED) {
             _ems_peer_handle_internal_message(peer, msg);
         }
     }
