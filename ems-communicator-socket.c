@@ -32,6 +32,7 @@ typedef enum {
     _EMS_COMM_SOCKET_STATUS_THREAD_RUNNING = (1 << 1), /* The thread is running */
 } _EMSCommunicatorSocketStatusFlag;
 
+static
 EMSSocketInfo *ems_communicator_socket_add_socket(EMSCommunicatorSocket *comm, int sockfd, EMSSocketType type)
 {
     if (ems_unlikely(!comm) || sockfd < 0)
@@ -52,6 +53,7 @@ EMSSocketInfo *ems_communicator_socket_add_socket(EMSCommunicatorSocket *comm, i
     return sock_info;
 }
 
+static
 int ems_communicator_socket_connect(EMSCommunicatorSocket *comm)
 {
     if (write(comm->control_pipe[1], "C", 1) != 1)
@@ -59,6 +61,7 @@ int ems_communicator_socket_connect(EMSCommunicatorSocket *comm)
     return EMS_OK;
 }
 
+static
 int ems_communicator_socket_disconnect(EMSCommunicatorSocket *comm)
 {
     if (write(comm->control_pipe[1], "D", 1) != 1)
@@ -77,6 +80,7 @@ int ems_communicator_socket_send_message(EMSCommunicatorSocket *comm, EMSMessage
     return EMS_OK;
 }
 
+static
 int ems_communicator_socket_try_connect(EMSCommunicatorSocket *comm)
 {
     if (ems_unlikely(!comm || !comm->try_connect))
@@ -95,6 +99,7 @@ int ems_communicator_socket_try_connect(EMSCommunicatorSocket *comm)
     return EMS_OK;
 }
 
+static
 int ems_communicator_socket_accept(EMSCommunicatorSocket *comm, int fd)
 {
     if (ems_unlikely(!comm) || fd < 0)
@@ -129,6 +134,7 @@ int ems_communicator_socket_accept(EMSCommunicatorSocket *comm, int fd)
 }
 
 /* Remove all sockets not being the control socket. */
+static
 void ems_communicator_socket_disconnect_peers(EMSCommunicatorSocket *comm)
 {
     EMSList *tmp;
@@ -153,6 +159,7 @@ void ems_communicator_socket_disconnect_peers(EMSCommunicatorSocket *comm)
 }
 
 /* Remove the specified socket. */
+static
 void ems_communicator_socket_disconnect_peer(EMSCommunicatorSocket *comm, EMSSocketInfo *sock_info)
 {
     epoll_ctl(comm->epoll_fd, EPOLL_CTL_DEL, sock_info->fd, NULL);
@@ -169,6 +176,7 @@ void ems_communicator_socket_disconnect_peer(EMSCommunicatorSocket *comm, EMSSoc
     }
 }
 
+static
 void ems_communicator_socket_close_connection(EMSCommunicatorSocket *comm, uint64_t peer_id)
 {
     EMSList *tmp;
@@ -189,6 +197,7 @@ void ems_communicator_socket_close_connection(EMSCommunicatorSocket *comm, uint6
 }
 
 /* Find the socket associated to the given peer. */
+static
 EMSSocketInfo *_ems_communicator_socket_get_peer(EMSCommunicatorSocket *comm, uint64_t peer_id)
 {
     EMSList *tmp;
@@ -200,6 +209,7 @@ EMSSocketInfo *_ems_communicator_socket_get_peer(EMSCommunicatorSocket *comm, ui
 }
 
 /* Check for outgoing messages and deliver them to the peers. */
+static
 void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *comm)
 {
     EMSMessage *msg;
@@ -251,12 +261,14 @@ void _ems_communicator_socket_check_outgoing_messages(EMSCommunicatorSocket *com
     }
 }
 
+static
 void ems_communicator_socket_flush_outgoing_messages(EMSCommunicatorSocket *comm)
 {
     _ems_communicator_socket_check_outgoing_messages(comm);
 }
 
 /* Read an incoming message, decode it and push it to the message queue of the peer. */
+static
 int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, EMSSocketInfo *sock_info)
 {
     uint8_t *buffer = ems_alloc(EMS_MESSAGE_HEADER_SIZE);
@@ -318,6 +330,7 @@ int _ems_communicator_socket_read_incoming_message(EMSCommunicatorSocket *comm, 
 /* The main thread of the communicator. Wait for data in the control socket, new data,
  * or incoming connections.
  */
+static
 void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
 {
     int epoll_timeout = -1;
@@ -515,4 +528,3 @@ int ems_communicator_socket_run_thread(EMSCommunicatorSocket *comm)
 
     return EMS_OK;
 }
-

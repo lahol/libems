@@ -12,6 +12,7 @@
 #include "ems-error.h"
 
 /* Return the ip address of the host given by hostname. */
+static
 in_addr_t _ems_get_ip_address(const char *hostname) {
     struct in_addr addr;
     struct hostent *host;
@@ -26,6 +27,7 @@ in_addr_t _ems_get_ip_address(const char *hostname) {
     return addr.s_addr;
 }
 
+static
 int ems_communicator_inet_destroy(EMSCommunicatorInet *comm)
 {
     ems_communicator_socket_clear((EMSCommunicatorSocket *)comm);
@@ -35,6 +37,7 @@ int ems_communicator_inet_destroy(EMSCommunicatorInet *comm)
     return 0;
 }
 
+static
 int ems_communicator_inet_try_connect(EMSCommunicatorInet *comm)
 {
     struct sockaddr_in addr;
@@ -70,6 +73,7 @@ int ems_communicator_inet_try_connect(EMSCommunicatorInet *comm)
     return sockfd;
 }
 
+static
 int ems_communicator_inet_accept(EMSCommunicatorInet *comm, int fd)
 {
     struct sockaddr_in addr;

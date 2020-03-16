@@ -104,8 +104,5 @@ void ems_communicator_socket_clear(EMSCommunicatorSocket *comm);
  */
 int ems_communicator_socket_run_thread(EMSCommunicatorSocket *comm);
 
-/* Add a file descriptor for monitoring. */
-EMSSocketInfo *ems_communicator_socket_add_socket(EMSCommunicatorSocket *comm, int sockfd, EMSSocketType type);
-
 /* Send a message over this communicator to all matching peers. */
 int ems_communicator_socket_send_message(EMSCommunicatorSocket *comm, EMSMessage *msg);

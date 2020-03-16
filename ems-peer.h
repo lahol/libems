@@ -114,20 +114,6 @@ uint64_t ems_peer_get_id(EMSPeer *peer);
  */
 void ems_peer_push_message(EMSPeer *peer, EMSMessage *msg);
 
-/* Signal the arrival of a new message in the queue. */
-void ems_peer_signal_new_message(EMSPeer *peer);
-
-/* Wait for new messages.
- * This blocks the execution of the calling thread until a new message arrives.
- */
-void ems_peer_wait_for_message(EMSPeer *peer);
-
-/* Wait for new messages or a timeout.
- * This blocks the execution of the calling thread until a new message arrives or
- * the timeout (in milliseconds) is expired.
- */
-void ems_peer_wait_for_message_timeout(EMSPeer *peer, uint32_t timeout_ms);
-
 /* Retrieve a message from the peer.
  * Internally, this checks first if the next message is for internal use only
  * and handles it if this is the case.

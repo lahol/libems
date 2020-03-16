@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 /* __EMS_MESSAGE_SET_ID */
+static
 size_t _ems_message_int_set_id_encode(EMSMessage *msg, uint8_t **buffer, size_t buflen)
 {
     if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 8))
@@ -21,6 +22,7 @@ size_t _ems_message_int_set_id_encode(EMSMessage *msg, uint8_t **buffer, size_t 
     return EMS_MESSAGE_HEADER_SIZE + 8;
 }
 
+static
 void _ems_message_int_set_id_decode(EMSMessage *msg, uint8_t *payload, size_t buflen)
 {
     if (ems_unlikely(buflen < 8)) {
@@ -31,6 +33,7 @@ void _ems_message_int_set_id_decode(EMSMessage *msg, uint8_t *payload, size_t bu
     ((EMSMessageIntSetId *)msg)->peer_id = ems_message_read_u64(payload, 0);
 }
 
+static
 void _ems_message_int_set_id_copy(EMSMessage *dst, EMSMessage *src)
 {
     ((EMSMessageIntSetId *)dst)->peer_id = ((EMSMessageIntSetId *)src)->peer_id;
@@ -49,6 +52,7 @@ void _ems_message_int_set_id_copy(EMSMessage *dst, EMSMessage *src)
 /* nothing to do here */
 
 /* __EMS_MESSAGE_CONNECTION_DEL */
+static
 size_t _ems_message_int_connection_del_encode(EMSMessage *msg, uint8_t **buffer, size_t buflen)
 {
     if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 8))
@@ -61,6 +65,7 @@ size_t _ems_message_int_connection_del_encode(EMSMessage *msg, uint8_t **buffer,
     return EMS_MESSAGE_HEADER_SIZE + 8;
 }
 
+static
 void _ems_message_int_connection_del_decode(EMSMessage *msg, uint8_t *payload, size_t buflen)
 {
     if (ems_unlikely(buflen < 8)) {
@@ -71,19 +76,13 @@ void _ems_message_int_connection_del_decode(EMSMessage *msg, uint8_t *payload, s
     ((EMSMessageIntConnectionDel *)msg)->remote_id = ems_message_read_u64(payload, 0);
 }
 
+static
 void _ems_message_int_connection_del_copy(EMSMessage *dst, EMSMessage *src)
 {
     ((EMSMessageIntConnectionDel *)dst)->remote_id = ((EMSMessageIntConnectionDel *)src)->remote_id;
 }
 
-/* EMS_MESSAGE_STATUS_PEER_CHANGED */
-void _ems_messages_status_peer_changed_set_value(EMSMessage *msg, const char *key, const void *value)
-{
-    if (!strcmp(key, "peer")) {
-        ((EMSMessageStatusPeerChanged *)msg)->peer = (EMSPeer *)value;
-    }
-}
-
+static
 void _ems_messages_status_peer_changed_copy(EMSMessage *dst, EMSMessage *src)
 {
     ((EMSMessageStatusPeerChanged *)dst)->peer = ((EMSMessageStatusPeerChanged *)src)->peer;
@@ -92,6 +91,7 @@ void _ems_messages_status_peer_changed_copy(EMSMessage *dst, EMSMessage *src)
 }
 
 /* EMS_MESSAGE_STATUS_PEER_READY */
+static
 void _ems_messages_status_peer_ready_copy(EMSMessage *dst, EMSMessage *src)
 {
     ((EMSMessageStatusPeerReady *)dst)->peer = ((EMSMessageStatusPeerReady *)src)->peer;

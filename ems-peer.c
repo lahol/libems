@@ -7,9 +7,13 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
-void *ems_peer_check_messages(EMSPeer *peer);
+static void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg);
+static void *ems_peer_check_messages(EMSPeer *peer);
+static void ems_peer_signal_new_message(EMSPeer *peer);
+static void ems_peer_wait_for_message(EMSPeer *peer);
+static void ems_peer_wait_for_message_timeout(EMSPeer *peer, uint32_t timeout_ms);
 
+static
 void _ems_peer_signal_change(EMSPeer *peer, uint32_t peer_status, uint64_t remote_id)
 {
     EMSMessage *msg = ems_message_new(EMS_MESSAGE_STATUS_PEER_CHANGED,
@@ -226,6 +230,8 @@ void ems_peer_push_message(EMSPeer *peer, EMSMessage *msg)
     ems_peer_signal_new_message(peer);
 }
 
+/* Signal the arrival of a new message in the queue. */
+static
 void ems_peer_signal_new_message(EMSPeer *peer)
 {
     pthread_mutex_lock(&peer->msg_available_lock);
@@ -233,6 +239,10 @@ void ems_peer_signal_new_message(EMSPeer *peer)
     pthread_mutex_unlock(&peer->msg_available_lock);
 }
 
+/* Wait for new messages.
+ * This blocks the execution of the calling thread until a new message arrives.
+ */
+static
 void ems_peer_wait_for_message(EMSPeer *peer)
 {
     pthread_mutex_lock(&peer->msg_available_lock);
@@ -245,6 +255,11 @@ void ems_peer_wait_for_message(EMSPeer *peer)
     pthread_mutex_unlock(&peer->msg_available_lock);
 }
 
+/* Wait for new messages or a timeout.
+ * This blocks the execution of the calling thread until a new message arrives or
+ * the timeout (in milliseconds) is expired.
+ */
+static
 void ems_peer_wait_for_message_timeout(EMSPeer *peer, uint32_t timeout_ms)
 {
     struct timespec timeout;
@@ -287,6 +302,7 @@ void ems_peer_add_communicator(EMSPeer *peer, EMSCommunicator *comm)
     pthread_mutex_unlock(&peer->peer_lock);
 }
 
+static
 void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
 {
     if (ems_unlikely(!msg))
@@ -336,12 +352,14 @@ void _ems_peer_handle_internal_message(EMSPeer *peer, EMSMessage *msg)
 }
 
 /* Filter for internal messages. */
-static int _ems_peer_filter_internal_message(EMSMessage *msg, void *nil)
+static
+int _ems_peer_filter_internal_message(EMSMessage *msg, void *nil)
 {
     return !EMS_MESSAGE_IS_INTERNAL(msg);
 }
 
 /* Check for internal messages. */
+static
 void *ems_peer_check_messages(EMSPeer *peer)
 {
     EMSMessage *msg;
@@ -365,6 +383,7 @@ struct _EMSPeerEventCallbackData {
     void *userdata;
 };
 
+static
 void *_ems_peer_event_loop(struct _EMSPeerEventCallbackData *data)
 {
     /* msg checking */
@@ -428,4 +447,3 @@ void ems_peer_stop_event_loop(EMSPeer *peer)
         ems_peer_signal_new_message(peer);
     }
 }
-

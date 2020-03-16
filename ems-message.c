@@ -103,6 +103,7 @@ int ems_message_type_add_member(uint32_t msgtype,
     return EMS_OK;
 }
 
+static
 EMSMessageClassMember *_ems_message_type_get_member(EMSMessageClassInternal *cls, const char *member_name)
 {
     EMSList *tmp;
@@ -113,6 +114,7 @@ EMSMessageClassMember *_ems_message_type_get_member(EMSMessageClassInternal *cls
     return NULL;
 }
 
+static
 void _ems_message_class_member_free(EMSMessageClassMember *member)
 {
     if (member) {
@@ -121,6 +123,7 @@ void _ems_message_class_member_free(EMSMessageClassMember *member)
     }
 }
 
+static
 void _ems_message_class_internal_free(EMSMessageClassInternal *msgclass)
 {
     ems_list_free_full(msgclass->members, (EMSDestroyNotifyFunc)_ems_message_class_member_free);
@@ -135,7 +138,7 @@ void ems_message_types_clear(void)
 
 void ems_messages_set_magic(char *magic)
 {
-    strncpy(msg_magic, magic, 4);
+    memcpy(msg_magic, magic, 4);
 }
 
 /* Create a new message of the given type, followed by the recipient and sender ids.

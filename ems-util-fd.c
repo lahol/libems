@@ -3,6 +3,7 @@
 #include "ems-util.h"
 
 #include <poll.h>
+#include <errno.h>
 
 ssize_t ems_util_write_full(int fd, uint8_t *buffer, size_t length)
 {
@@ -21,7 +22,7 @@ ssize_t ems_util_write_full(int fd, uint8_t *buffer, size_t length)
     while (bytes_written < length) {
         rc = write(fd, &buffer[bytes_written], length - bytes_written);
         if (rc <= 0) {
-            fprintf(stderr, "write_full returned %zd (written %zd/%zu)\n", rc, bytes_written, length);
+            fprintf(stderr, "write_full returned %zd (written %zd/%zu), errno: %d\n", rc, bytes_written, length, errno);
             return rc;
         }
         bytes_written += rc;
@@ -38,7 +39,7 @@ ssize_t ems_util_read_full(int fd, uint8_t *buffer, size_t length)
     while (bytes_read < length) {
         rc = read(fd, &buffer[bytes_read], length - bytes_read);
         if (rc <= 0) {
-            fprintf(stderr, "read_full returned %zd (written %zd/%zu)\n", rc, bytes_read, length);
+            fprintf(stderr, "read_full returned %zd (written %zd/%zu), errno: %d\n", rc, bytes_read, length, errno);
             return rc;
         }
         bytes_read += rc;

@@ -10,6 +10,7 @@
 #include <sys/un.h>
 #include "ems-error.h"
 
+static
 int ems_communicator_unix_destroy(EMSCommunicatorUnix *comm)
 {
     ems_communicator_socket_clear((EMSCommunicatorSocket *)comm);
@@ -17,7 +18,7 @@ int ems_communicator_unix_destroy(EMSCommunicatorUnix *comm)
     return 0;
 }
 
-
+static
 int ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
 {
     /* Depending on role, bind socket or connect */
@@ -54,6 +55,7 @@ int ems_communictator_unix_try_connect(EMSCommunicatorUnix *comm)
     return sockfd;
 }
 
+static
 int ems_communicator_unix_accept(EMSCommunicatorUnix *comm, int fd)
 {
     struct sockaddr_un addr;
@@ -103,4 +105,3 @@ EMSCommunicator *ems_communicator_unix_create(va_list args)
 
     return comm;
 }
-

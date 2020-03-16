@@ -124,11 +124,6 @@ int ems_message_copy(EMSMessage *dst, EMSMessage *src);
 /* Duplicate a message. */
 EMSMessage *ems_message_dup(EMSMessage *msg);
 
-#if 0
-/* Set a value given by some key. */
-void ems_message_set_value(EMSMessage *msg, const char *key, const void *value);
-#endif
-
 /* Encode a message. This calls the function from the class or writes only the generic part. */
 size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer);
 
