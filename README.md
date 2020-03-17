@@ -17,7 +17,6 @@ A small usage example is given in test.c.
 
 There is still a lot to do. For example:
  * More error checking and better error recovery.
- * A TCP connector.
  * Documentation.
  * A more flexible API (e.g., change settings of connectors after creation).
 
