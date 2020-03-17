@@ -15,7 +15,7 @@ libems.so.1.0: $(ems_OBJ)
 	ln -sf libems.so.1.0 libems.so.1
 	ln -sf libems.so.1 libems.so
 
-test: test.c $(ems_HEADERS)
+test: test.c $(ems_HEADERS) libems.so.1.0
 	$(CC) $(CFLAGS) -L. -o test test.c -lems $(LIBS)
 
 %.o: %.c $(ems_HEADERS)
@@ -28,6 +28,6 @@ install:
 	cp ems-peer.h ems-message.h ems-msg-queue.h ems-communicator.h ems-util.h ems-util-list.h ems-util-fd.h ems-status-messages.h ems.h ems-error.h ems-memory.h ems-types.h $(PREFIX)/include
 
 clean:
-	$(RM) libems.so* $(ems_OBJ)
+	$(RM) libems.so* $(ems_OBJ) test
 
 .PHONY: all clean install
