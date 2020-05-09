@@ -246,8 +246,10 @@ size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer)
     ems_message_write_u64(*buffer, 16, msg->sender_id);
     ems_message_write_u32(*buffer, 24, 0);
 
-    if (cls->klass.msg_encode)
-        return cls->klass.msg_encode(msg, buffer, buflen);
+    if (cls->klass.msg_encode) {
+        buflen = cls->klass.msg_encode(msg, buffer, buflen);
+        ems_message_write_u32(*buffer, EMS_MESSAGE_HEADER_SIZE - 4, buflen - EMS_MESSAGE_HEADER_SIZE);
+    }
 
     return buflen;
 }

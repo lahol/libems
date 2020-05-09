@@ -13,8 +13,6 @@ size_t _ems_message_int_set_id_encode(EMSMessage *msg, uint8_t **buffer, size_t 
 {
     if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 8))
         *buffer = ems_realloc(*buffer, EMS_MESSAGE_HEADER_SIZE + 8);
-    /* payload_size */
-    ems_message_write_payload_size(*buffer, 8);
 
     /* the actual data */
     ems_message_write_u64(*buffer, EMS_MESSAGE_HEADER_SIZE, ((EMSMessageIntSetId *)msg)->peer_id);
@@ -57,8 +55,6 @@ size_t _ems_message_int_connection_del_encode(EMSMessage *msg, uint8_t **buffer,
 {
     if (ems_unlikely(buflen < EMS_MESSAGE_HEADER_SIZE + 8))
         *buffer = ems_realloc(*buffer, EMS_MESSAGE_HEADER_SIZE + 8);
-
-    ems_message_write_payload_size(*buffer, 8);
 
     ems_message_write_u64(*buffer, EMS_MESSAGE_HEADER_SIZE, ((EMSMessageIntConnectionDel *)msg)->remote_id);
 

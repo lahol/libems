@@ -13,8 +13,6 @@
 #include "ems-messages-internal.h"
 #include "ems-error.h"
 
-#include <stropts.h>
-
 #ifdef DEBUG
 #include <stdio.h>
 #endif
