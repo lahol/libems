@@ -72,7 +72,8 @@ int ems_communicator_socket_send_message(EMSCommunicatorSocket *comm, EMSMessage
     /* signal incoming message to comm thread */
     if (ems_unlikely(!msg))
         return EMS_ERROR_INVALID_ARGUMENT;
-    ems_message_queue_push_tail(&((EMSCommunicator *)comm)->msg_queue_outgoing, ems_message_dup(msg));
+    ems_message_ref(msg);
+    ems_message_queue_push_tail(&((EMSCommunicator *)comm)->msg_queue_outgoing, msg);
     if (write(comm->control_pipe[1], "M", 1) != 1)
         return EMS_ERROR_WRITE_FAILED;
     return EMS_OK;

@@ -144,7 +144,8 @@ void ems_communicator_handle_internal_message(EMSCommunicator *comm, EMSMessage 
             ems_communicator_close_connection(comm, msg->sender_id);
             break;
         case __EMS_MESSAGE_TERM:
-            ems_peer_push_message(comm->peer, ems_message_dup(msg));
+            ems_message_ref(msg);
+            ems_peer_push_message(comm->peer, msg);
             break;
         default:
             if (comm && comm->handle_int_message)
