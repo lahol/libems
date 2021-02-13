@@ -38,7 +38,7 @@ typedef enum {
 typedef struct {
     /* The file descriptor. */
     int fd;
-    
+
     /* The type of this socket/fd. */
     EMSSocketType type;
 

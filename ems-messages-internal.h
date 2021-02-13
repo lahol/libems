@@ -36,7 +36,7 @@ typedef EMSMessage EMSMessageIntConnectionAdd;
 #define __EMS_MESSAGE_CONNECTION_DEL 0x80000006
 typedef struct {
     EMSMessage parent;
-    
+
     uint64_t remote_id;
 } EMSMessageIntConnectionDel;
 

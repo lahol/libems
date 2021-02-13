@@ -74,7 +74,7 @@ EMSCommunicator *ems_communicator_unix_create(va_list args)
     comm->type = EMS_COMM_TYPE_UNIX;
     comm->role = EMS_PEER_ROLE_SLAVE; /* default to Slave if not specified otherwise */
     comm->destroy = (EMSCommunicatorDestroy)ems_communicator_unix_destroy;
-    
+
     ((EMSCommunicatorSocket *)comm)->try_connect =
         (EMSCommunicatorSocketTryConnect)ems_communictator_unix_try_connect;
     ((EMSCommunicatorSocket *)comm)->accept      =

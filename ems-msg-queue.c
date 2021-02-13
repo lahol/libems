@@ -180,7 +180,7 @@ EMSMessage *ems_message_queue_peek_head(EMSMessageQueue *mq)
     else
         msg = mq->priv;
     pthread_mutex_unlock(&mq->queue_lock);
-    
+
     return msg;
 }
 

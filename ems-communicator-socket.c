@@ -341,7 +341,7 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
     int event_count, j;
 
     uint32_t status_flags = 0;
-    
+
     char ctl;
     int rc;
 

@@ -181,7 +181,7 @@ int main(int argc, char **argv)
                                        NULL, NULL);
         ems_peer_add_communicator(peer, comm);
     }
-                                                    
+
     if (cfg_hostname || cfg_port) {
         /* only if no unix_socket || role master otherwise the slaves connect twice */
         if (!cfg_unix_socket || role == EMS_PEER_ROLE_MASTER) {
