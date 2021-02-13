@@ -90,7 +90,7 @@ EMSCommunicator *ems_communicator_unix_create(va_list args)
     while ((key = va_arg(args, char *)) != NULL) {
         val = va_arg(args, void *);
         if (!strcmp(key, "socket")) {
-            strncpy(uc->socket_name, (char *)val, 108);
+            strncpy(uc->socket_name, (char *)val, 107);
         }
         else {
             ems_communicator_socket_set_value((EMSCommunicatorSocket *)comm, key, val);
