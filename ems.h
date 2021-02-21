@@ -1,3 +1,8 @@
+/** @file ems.h
+ *  Main include for the library.
+ *  @defgroup libems Setup the library.
+ *  @{
+ */
 #pragma once
 
 #include "ems-error.h"
@@ -6,10 +11,15 @@
 #include "ems-status-messages.h"
 #include "ems-memory.h"
 
-/* Setup internal data structures.
- * magic is the 4 byte magic sequence every message starts with.
+/** @brief Setup internal data structures.
+ *  @param[in] magic The 4 byte magic sequence every message starts with.
+ *  @retval 0 The initialization was successful.
+ *  @retval <0 An error code.
  */
 int ems_init(char *magic);
 
-/* Clean up internal data structures. */
+/** @brief Clean up internal data structures.
+ */
 void ems_cleanup(void);
+
+/** @} */
