@@ -78,8 +78,8 @@ struct _EMSCommunicatorSocket {
     /* File descriptor for epoll. */
     int epoll_fd;
 
-    /* The control pipe for internal communication. */
-    int control_pipe[2];
+    /* The control fd for waking up. */
+    int control_eventfd;
 
     /* The thread waiting for something to happen with the descriptors. */
     pthread_t comm_thread;

@@ -9,6 +9,7 @@
 #include "ems-peer.h"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/eventfd.h>
 /*#include <sys/un.h>*/
 #include "ems-messages-internal.h"
 #include "ems-error.h"
@@ -48,12 +49,19 @@ EMSSocketInfo *ems_communicator_socket_add_socket(EMSCommunicatorSocket *comm, i
 }
 
 static
+int _ems_communicator_socket_signal_event(EMSCommunicatorSocket *comm)
+{
+    const uint64_t u = 1;
+    if (write(comm->control_eventfd, &u, sizeof(uint64_t)) != sizeof(uint64_t))
+        return EMS_ERROR_WRITE_FAILED;
+    return EMS_OK;
+}
+
+static
 int ems_communicator_socket_connect(EMSCommunicatorSocket *comm)
 {
     atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_ACTION_CONNECTING);
-    if (write(comm->control_pipe[1], "C", 1) != 1)
-        return EMS_ERROR_WRITE_FAILED;
-    return EMS_OK;
+    return _ems_communicator_socket_signal_event(comm);
 }
 
 static
@@ -62,9 +70,7 @@ int ems_communicator_socket_disconnect(EMSCommunicatorSocket *comm)
     atomic_fetch_and(&comm->comm_socket_status,
             ~(_EMS_COMM_SOCKET_ACTION_CONNECTING | _EMS_COMM_SOCKET_ACTION_CONNECTED));
     atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_ACTION_DISCONNECT);
-    if (write(comm->control_pipe[1], "D", 1) != 1)
-        return EMS_ERROR_WRITE_FAILED;
-    return EMS_OK;
+    return _ems_communicator_socket_signal_event(comm);
 }
 
 int ems_communicator_socket_send_message(EMSCommunicatorSocket *comm, EMSMessage *msg)
@@ -74,9 +80,7 @@ int ems_communicator_socket_send_message(EMSCommunicatorSocket *comm, EMSMessage
         return EMS_ERROR_INVALID_ARGUMENT;
     ems_message_ref(msg);
     ems_message_queue_push_tail(&((EMSCommunicator *)comm)->msg_queue_outgoing, msg);
-    if (write(comm->control_pipe[1], "M", 1) != 1)
-        return EMS_ERROR_WRITE_FAILED;
-    return EMS_OK;
+    return _ems_communicator_socket_signal_event(comm);
 }
 
 static
@@ -340,10 +344,9 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
     struct epoll_event incoming[16];
     int event_count, j;
 
-    char ctl;
     int rc;
 
-    ems_communicator_socket_add_socket(comm, comm->control_pipe[0], EMS_SOCKET_TYPE_CONTROL);
+    ems_communicator_socket_add_socket(comm, comm->control_eventfd, EMS_SOCKET_TYPE_CONTROL);
 
     while (1) {
         event_count = epoll_wait(comm->epoll_fd, incoming, 16, epoll_timeout);
@@ -353,22 +356,9 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
             switch (sock_info->type) {
                 case EMS_SOCKET_TYPE_CONTROL:
                     {
-                        /* handle control stuff */
-                        if ((rc = read(sock_info->fd, &ctl, 1)) <= 0) {
-                            break;
-                        }
-                        if (ctl == 'M') {
-                            /* New message arrived. Nothing to do here. This is just a wakeup call. */
-                        }
-                        else if (ctl == 'C') {
-                            /* try to connect, if this fails, set timeout to 100ms, to retry */
-                        }
-                        else if (ctl == 'D') {
-                            /* disconnect, remove all data sockets, unbind if master */
-                        }
-                        else if (ctl == 'Q') {
-                            /* quit */
-                        }
+                        /* Just wake up and read from the eventfd. */
+                        uint64_t u;
+                        (void)read(sock_info->fd, &u, sizeof(uint64_t));
                     }
                     break;
                 case EMS_SOCKET_TYPE_DATA:
@@ -447,8 +437,8 @@ int ems_communicator_socket_init(EMSCommunicatorSocket *comm)
     c->close_connection = (EMSCommunicatorCloseConnection)ems_communicator_socket_close_connection;
     c->flush_outgoing = (EMSCommunicatorFlushOutgoingMessages)ems_communicator_socket_flush_outgoing_messages;
 
-    if (pipe(comm->control_pipe) != 0) {
-        fprintf(stderr, "EMSCommunicatorSocket: Could not set up control pipe.\n");
+    if ((comm->control_eventfd = eventfd(0, 0)) == -1) {
+        fprintf(stderr, "EMSCommunicatorSocket: Could not set up control fd.\n");
         return EMS_ERROR_INITIALIZATION;
     }
 
@@ -479,7 +469,8 @@ void ems_communicator_socket_clear(EMSCommunicatorSocket *comm)
         atomic_fetch_and(&comm->comm_socket_status,
                 ~(_EMS_COMM_SOCKET_ACTION_CONNECTING | _EMS_COMM_SOCKET_ACTION_CONNECTED));
         atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_ACTION_QUIT);
-        if (write(comm->control_pipe[1], "Q", 1) != 1)
+        const uint64_t u = 1;
+        if (write(comm->control_eventfd, &u, sizeof(uint64_t)) != sizeof(uint64_t))
             fprintf(stderr, "EMSCommunicatorSocket: Could not write to control pipe, quit\n");
     }
 
@@ -489,11 +480,9 @@ void ems_communicator_socket_clear(EMSCommunicatorSocket *comm)
     }
 
     if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
-        close(comm->control_pipe[1]);
-        close(comm->control_pipe[0]);
+        close(comm->control_eventfd);
 
-        comm->control_pipe[0] = -1;
-        comm->control_pipe[1] = -1;
+        comm->control_eventfd = -1;
 
         atomic_fetch_and(&comm->comm_socket_status, ~_EMS_COMM_SOCKET_STATUS_CONTROL_PIPE);
     }
