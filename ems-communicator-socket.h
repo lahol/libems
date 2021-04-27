@@ -15,6 +15,7 @@
 #include "ems-communicator.h"
 #include "ems-util-list.h"
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <pthread.h>
 
 /* The different types of sockets to distinguish the actions to be taken when
@@ -87,7 +88,7 @@ struct _EMSCommunicatorSocket {
     EMSList *socket_list;
 
     /* Internal status of the communicator. */
-    uint32_t comm_socket_status;
+    atomic_uint comm_socket_status;
 };
 
 /* Initialize the communicator. Set up values and functions common to all derived communicators. */

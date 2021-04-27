@@ -461,7 +461,7 @@ int ems_communicator_socket_init(EMSCommunicatorSocket *comm)
         return EMS_ERROR_INITIALIZATION;
     }
 
-    comm->comm_socket_status |= _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE;
+    atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE);
 
     ems_message_queue_init(&((EMSCommunicator *)comm)->msg_queue_outgoing);
     ems_message_queue_init(&((EMSCommunicator *)comm)->msg_queue_incoming);
@@ -484,24 +484,24 @@ void ems_communicator_socket_set_value(EMSCommunicatorSocket *comm, const char *
 
 void ems_communicator_socket_clear(EMSCommunicatorSocket *comm)
 {
-    if (comm->comm_socket_status & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
+    if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
         if (write(comm->control_pipe[1], "Q", 1) != 1)
             fprintf(stderr, "EMSCommunicatorSocket: Could not write to control pipe, quit\n");
     }
 
-    if (comm->comm_socket_status & _EMS_COMM_SOCKET_STATUS_THREAD_RUNNING) {
+    if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_STATUS_THREAD_RUNNING) {
         pthread_join(comm->comm_thread, NULL);
-        comm->comm_socket_status &= ~_EMS_COMM_SOCKET_STATUS_THREAD_RUNNING;
+        atomic_fetch_and(&comm->comm_socket_status, ~_EMS_COMM_SOCKET_STATUS_THREAD_RUNNING);
     }
 
-    if (comm->comm_socket_status & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
+    if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
         close(comm->control_pipe[1]);
         close(comm->control_pipe[0]);
 
         comm->control_pipe[0] = -1;
         comm->control_pipe[1] = -1;
 
-        comm->comm_socket_status &= ~_EMS_COMM_SOCKET_STATUS_CONTROL_PIPE;
+        atomic_fetch_and(&comm->comm_socket_status, ~_EMS_COMM_SOCKET_STATUS_CONTROL_PIPE);
     }
 
     ems_list_free_full(comm->socket_list, (EMSDestroyNotifyFunc)ems_free);
@@ -523,7 +523,7 @@ int ems_communicator_socket_run_thread(EMSCommunicatorSocket *comm)
         return EMS_ERROR_INITIALIZATION;
     }
 
-    comm->comm_socket_status |= _EMS_COMM_SOCKET_STATUS_THREAD_RUNNING;
+    atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_STATUS_THREAD_RUNNING);
 
     return EMS_OK;
 }
