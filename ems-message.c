@@ -257,7 +257,11 @@ size_t ems_message_encode(EMSMessage *msg, uint8_t **buffer)
 /* Decode a message. */
 void ems_message_decode_payload(EMSMessage *msg, uint8_t *payload, size_t payload_size)
 {
+    if (ems_unlikely(!msg))
+        return;
     EMSMessageClassInternal *cls = _ems_message_type_get_class(msg->type);
+    if (ems_unlikely(!cls))
+        return;
 
     if (cls->klass.msg_decode)
         cls->klass.msg_decode(msg, payload, payload_size);
