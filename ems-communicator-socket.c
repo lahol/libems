@@ -18,16 +18,12 @@
 #endif
 
 typedef enum {
-    _EMS_COMM_SOCKET_ACTION_CONNECTED  = (1<<0),  /* The socket is connected */
-    _EMS_COMM_SOCKET_ACTION_CONNECTING = (1<<1),  /* The socket is about to be connected, but may have failed */
-    _EMS_COMM_SOCKET_ACTION_DATA       = (1<<2),  /* Data is available */
-    _EMS_COMM_SOCKET_ACTION_DISCONNECT = (1<<3),  /* Intent to disconnect */
-    _EMS_COMM_SOCKET_ACTION_QUIT       = (1<<4 | 1<<3), /* Intent to quit */
-} _EMSCommunicatorSocketActionFlag;
-
-typedef enum {
     _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE   = (1 << 0), /* The control pipe is set up */
     _EMS_COMM_SOCKET_STATUS_THREAD_RUNNING = (1 << 1), /* The thread is running */
+    _EMS_COMM_SOCKET_ACTION_CONNECTED  = (1<<2),  /* The socket is connected */
+    _EMS_COMM_SOCKET_ACTION_CONNECTING = (1<<3),  /* The socket is about to be connected, but may have failed */
+    _EMS_COMM_SOCKET_ACTION_DISCONNECT = (1<<4),  /* Intent to disconnect */
+    _EMS_COMM_SOCKET_ACTION_QUIT       = (1<<5 | 1<<4), /* Intent to quit */
 } _EMSCommunicatorSocketStatusFlag;
 
 static
@@ -54,6 +50,7 @@ EMSSocketInfo *ems_communicator_socket_add_socket(EMSCommunicatorSocket *comm, i
 static
 int ems_communicator_socket_connect(EMSCommunicatorSocket *comm)
 {
+    atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_ACTION_CONNECTING);
     if (write(comm->control_pipe[1], "C", 1) != 1)
         return EMS_ERROR_WRITE_FAILED;
     return EMS_OK;
@@ -62,6 +59,9 @@ int ems_communicator_socket_connect(EMSCommunicatorSocket *comm)
 static
 int ems_communicator_socket_disconnect(EMSCommunicatorSocket *comm)
 {
+    atomic_fetch_and(&comm->comm_socket_status,
+            ~(_EMS_COMM_SOCKET_ACTION_CONNECTING | _EMS_COMM_SOCKET_ACTION_CONNECTED));
+    atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_ACTION_DISCONNECT);
     if (write(comm->control_pipe[1], "D", 1) != 1)
         return EMS_ERROR_WRITE_FAILED;
     return EMS_OK;
@@ -340,8 +340,6 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
     struct epoll_event incoming[16];
     int event_count, j;
 
-    uint32_t status_flags = 0;
-
     char ctl;
     int rc;
 
@@ -364,19 +362,12 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
                         }
                         else if (ctl == 'C') {
                             /* try to connect, if this fails, set timeout to 100ms, to retry */
-                            status_flags |= _EMS_COMM_SOCKET_ACTION_CONNECTING;
                         }
                         else if (ctl == 'D') {
                             /* disconnect, remove all data sockets, unbind if master */
-                            status_flags &= ~(_EMS_COMM_SOCKET_ACTION_CONNECTING | _EMS_COMM_SOCKET_ACTION_CONNECTED);
-                            status_flags |= _EMS_COMM_SOCKET_ACTION_DISCONNECT;
                         }
                         else if (ctl == 'Q') {
                             /* quit */
-                            status_flags &= ~(_EMS_COMM_SOCKET_ACTION_CONNECTING |
-                                              _EMS_COMM_SOCKET_ACTION_CONNECTED |
-                                              _EMS_COMM_SOCKET_ACTION_DATA);
-                            status_flags |= _EMS_COMM_SOCKET_ACTION_QUIT;
                         }
                     }
                     break;
@@ -409,13 +400,13 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
          * and set the status (and flags) appropriately. If not, the timeout is set
          * to 100 ms to try again later.
          */
-        if (status_flags & _EMS_COMM_SOCKET_ACTION_CONNECTING) {
+        if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_ACTION_CONNECTING) {
 #ifdef DEBUG
             fprintf(stderr, "[%d] try connecting\n", getpid());
 #endif
             if ((rc = ems_communicator_socket_try_connect(comm)) == EMS_OK) {
-                status_flags &= ~_EMS_COMM_SOCKET_ACTION_CONNECTING;
-                status_flags |= _EMS_COMM_SOCKET_ACTION_CONNECTED;
+                atomic_fetch_and(&comm->comm_socket_status, ~_EMS_COMM_SOCKET_ACTION_CONNECTING);
+                atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_ACTION_CONNECTED);
                 ems_communicator_set_status((EMSCommunicator *)comm, EMS_COMM_STATUS_CONNECTED);
                 epoll_timeout = -1;
             }
@@ -426,19 +417,19 @@ void *ems_communicator_socket_comm_thread(EMSCommunicatorSocket *comm)
                 epoll_timeout = 100;
             }
         }
-        else if (status_flags & _EMS_COMM_SOCKET_ACTION_DISCONNECT) {
+        else if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_ACTION_DISCONNECT) {
             ems_communicator_socket_disconnect_peers(comm);
-            status_flags &= ~_EMS_COMM_SOCKET_ACTION_DISCONNECT;
+            atomic_fetch_and(&comm->comm_socket_status, ~_EMS_COMM_SOCKET_ACTION_DISCONNECT);
             ems_communicator_set_status((EMSCommunicator *)comm, EMS_COMM_STATUS_INITIALIZED);
         }
 
-        if (status_flags & _EMS_COMM_SOCKET_ACTION_QUIT) {
+        if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_ACTION_QUIT) {
             /* we disconnected earlier */
             break;
         }
 
         /* peek queue, only if connected */
-        if (status_flags & _EMS_COMM_SOCKET_ACTION_CONNECTED)
+        if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_ACTION_CONNECTED)
             _ems_communicator_socket_check_outgoing_messages(comm);
     }
 
@@ -485,6 +476,9 @@ void ems_communicator_socket_set_value(EMSCommunicatorSocket *comm, const char *
 void ems_communicator_socket_clear(EMSCommunicatorSocket *comm)
 {
     if (atomic_load(&comm->comm_socket_status) & _EMS_COMM_SOCKET_STATUS_CONTROL_PIPE) {
+        atomic_fetch_and(&comm->comm_socket_status,
+                ~(_EMS_COMM_SOCKET_ACTION_CONNECTING | _EMS_COMM_SOCKET_ACTION_CONNECTED));
+        atomic_fetch_or(&comm->comm_socket_status, _EMS_COMM_SOCKET_ACTION_QUIT);
         if (write(comm->control_pipe[1], "Q", 1) != 1)
             fprintf(stderr, "EMSCommunicatorSocket: Could not write to control pipe, quit\n");
     }
